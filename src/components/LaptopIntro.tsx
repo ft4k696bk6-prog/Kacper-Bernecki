@@ -1,20 +1,39 @@
 import { useEffect, useRef, useState } from 'react'
 import { gsap } from 'gsap'
 import * as THREE from 'three'
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 
 type LaptopIntroProps = {
   onComplete: () => void
 }
 
 const MOBILE_BREAKPOINT = 640
-const DESKTOP_FOV = 38
+const DESKTOP_FOV = 41
 const MOBILE_FOV = 78
+
+function createRoundedPlaneGeometry(width: number, height: number, radius: number) {
+  const x = -width / 2
+  const y = -height / 2
+  const shape = new THREE.Shape()
+
+  shape.moveTo(x + radius, y)
+  shape.lineTo(x + width - radius, y)
+  shape.quadraticCurveTo(x + width, y, x + width, y + radius)
+  shape.lineTo(x + width, y + height - radius)
+  shape.quadraticCurveTo(x + width, y + height, x + width - radius, y + height)
+  shape.lineTo(x + radius, y + height)
+  shape.quadraticCurveTo(x, y + height, x, y + height - radius)
+  shape.lineTo(x, y + radius)
+  shape.quadraticCurveTo(x, y, x + radius, y)
+
+  return new THREE.ShapeGeometry(shape, 18)
+}
 
 export function LaptopIntro({ onComplete }: LaptopIntroProps) {
   const mountRef = useRef<HTMLDivElement>(null)
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null)
   const screenGroupRef = useRef<THREE.Group | null>(null)
-  const orbitRef = useRef({ angle: 1.22, radius: 4.8, height: 1.75 })
+  const orbitRef = useRef({ angle: 1.22, radius: 5.35, height: 1.75 })
   const [started, setStarted] = useState(false)
 
   useEffect(() => {
@@ -37,6 +56,8 @@ export function LaptopIntro({ onComplete }: LaptopIntroProps) {
     renderer.shadowMap.enabled = true
     renderer.shadowMap.type = THREE.PCFShadowMap
     renderer.outputColorSpace = THREE.SRGBColorSpace
+    renderer.toneMapping = THREE.ACESFilmicToneMapping
+    renderer.toneMappingExposure = 1.12
     mount.appendChild(renderer.domElement)
 
     const isPortrait = mount.clientWidth < MOBILE_BREAKPOINT
@@ -55,18 +76,22 @@ export function LaptopIntro({ onComplete }: LaptopIntroProps) {
     )
     camera.lookAt(0, 0.74, 0)
 
-    const ambient = new THREE.HemisphereLight('#d7e4ef', '#1b1612', 1.2)
+    const ambient = new THREE.HemisphereLight('#f5f8fb', '#1b1713', 1.55)
     scene.add(ambient)
 
-    const key = new THREE.DirectionalLight('#fff4dc', 2.5)
-    key.position.set(3, 5, 4)
+    const key = new THREE.DirectionalLight('#fff7e8', 3.6)
+    key.position.set(3.5, 5.2, 3.8)
     key.castShadow = true
     key.shadow.mapSize.set(1024, 1024)
     scene.add(key)
 
-    const rim = new THREE.PointLight('#7ec8ff', 1.2, 7)
-    rim.position.set(-3, 2.2, -2.8)
+    const rim = new THREE.PointLight('#8fd2ff', 2.2, 7.5)
+    rim.position.set(-3.6, 2.4, -2.8)
     scene.add(rim)
+
+    const studioStrip = new THREE.PointLight('#dff4ff', 1.8, 6)
+    studioStrip.position.set(1.8, 2.3, 2.1)
+    scene.add(studioStrip)
 
     const floor = new THREE.Mesh(
       new THREE.PlaneGeometry(20, 20),
@@ -122,51 +147,138 @@ export function LaptopIntro({ onComplete }: LaptopIntroProps) {
     scene.add(laptop)
 
     const aluminum = new THREE.MeshPhysicalMaterial({
-      color: '#b9bec2',
-      roughness: 0.24,
-      metalness: 0.68,
-      clearcoat: 0.3,
+      color: '#c8ccd0',
+      roughness: 0.18,
+      metalness: 0.84,
+      clearcoat: 0.48,
+      clearcoatRoughness: 0.2,
     })
-    const base = new THREE.Mesh(new THREE.BoxGeometry(2.55, 0.07, 1.52), aluminum)
-    base.position.y = 0.035
+    const darkAluminum = new THREE.MeshPhysicalMaterial({
+      color: '#15181b',
+      roughness: 0.34,
+      metalness: 0.65,
+      clearcoat: 0.22,
+      clearcoatRoughness: 0.28,
+    })
+    const keyMaterial = new THREE.MeshStandardMaterial({
+      color: '#0b0d0f',
+      roughness: 0.48,
+      metalness: 0.18,
+    })
+    const glassMaterial = new THREE.MeshPhysicalMaterial({
+      color: '#05090d',
+      roughness: 0.08,
+      metalness: 0.08,
+      clearcoat: 1,
+      clearcoatRoughness: 0.06,
+      transparent: true,
+      opacity: 0.72,
+    })
+
+    const base = new THREE.Mesh(new RoundedBoxGeometry(2.76, 0.075, 1.78, 8, 0.055), aluminum)
+    base.position.y = 0.04
     base.castShadow = true
     base.receiveShadow = true
     laptop.add(base)
 
-    const keyboard = new THREE.Mesh(
-      new THREE.BoxGeometry(1.58, 0.012, 0.68),
-      new THREE.MeshStandardMaterial({ color: '#15191d', roughness: 0.42, metalness: 0.35 }),
+    const underbody = new THREE.Mesh(
+      new RoundedBoxGeometry(2.62, 0.035, 1.62, 6, 0.045),
+      new THREE.MeshStandardMaterial({ color: '#0c0f11', roughness: 0.55, metalness: 0.28 }),
     )
-    keyboard.position.set(0, 0.082, 0.12)
-    keyboard.castShadow = true
-    laptop.add(keyboard)
+    underbody.position.y = 0.008
+    underbody.castShadow = true
+    laptop.add(underbody)
 
     const trackpad = new THREE.Mesh(
-      new THREE.BoxGeometry(0.72, 0.014, 0.35),
-      new THREE.MeshStandardMaterial({ color: '#7d858b', roughness: 0.32, metalness: 0.5 }),
+      new RoundedBoxGeometry(0.86, 0.011, 0.48, 8, 0.035),
+      new THREE.MeshPhysicalMaterial({
+        color: '#aeb5ba',
+        roughness: 0.2,
+        metalness: 0.68,
+        clearcoat: 0.35,
+        clearcoatRoughness: 0.18,
+      }),
     )
-    trackpad.position.set(0, 0.086, 0.55)
+    trackpad.position.set(0, 0.088, 0.53)
     laptop.add(trackpad)
 
+    const keyboardTray = new THREE.Mesh(
+      new RoundedBoxGeometry(1.74, 0.012, 0.7, 6, 0.035),
+      new THREE.MeshStandardMaterial({ color: '#1a1d20', roughness: 0.42, metalness: 0.28 }),
+    )
+    keyboardTray.position.set(0, 0.087, -0.22)
+    keyboardTray.castShadow = true
+    laptop.add(keyboardTray)
+
+    function addKeyRow(z: number, count: number, width: number, depth = 0.086, offset = 0) {
+      const gap = 0.026
+      const totalWidth = count * width + (count - 1) * gap
+      const startX = -totalWidth / 2 + width / 2 + offset
+
+      for (let index = 0; index < count; index += 1) {
+        const key = new THREE.Mesh(new RoundedBoxGeometry(width, 0.018, depth, 4, 0.012), keyMaterial)
+        key.position.set(startX + index * (width + gap), 0.105, z)
+        key.castShadow = true
+        laptop.add(key)
+      }
+    }
+
+    addKeyRow(-0.47, 14, 0.086, 0.07)
+    addKeyRow(-0.35, 13, 0.095, 0.078, 0.02)
+    addKeyRow(-0.22, 12, 0.105, 0.082, 0.0)
+    addKeyRow(-0.08, 11, 0.118, 0.085, 0.025)
+    addKeyRow(0.07, 9, 0.13, 0.09, 0.0)
+
+    const spacebar = new THREE.Mesh(new RoundedBoxGeometry(0.72, 0.018, 0.09, 5, 0.014), keyMaterial)
+    spacebar.position.set(0, 0.108, 0.2)
+    spacebar.castShadow = true
+    laptop.add(spacebar)
+
+    const frontNotch = new THREE.Mesh(
+      new RoundedBoxGeometry(0.44, 0.012, 0.035, 5, 0.014),
+      new THREE.MeshStandardMaterial({ color: '#3a4045', roughness: 0.3, metalness: 0.35 }),
+    )
+    frontNotch.position.set(0, 0.083, 0.912)
+    laptop.add(frontNotch)
+
     const hinge = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.035, 0.035, 2.42, 32),
-      new THREE.MeshStandardMaterial({ color: '#9aa1a6', roughness: 0.22, metalness: 0.7 }),
+      new THREE.CylinderGeometry(0.032, 0.032, 2.5, 48),
+      new THREE.MeshPhysicalMaterial({
+        color: '#b8bdc1',
+        roughness: 0.17,
+        metalness: 0.82,
+        clearcoat: 0.4,
+        clearcoatRoughness: 0.16,
+      }),
     )
     hinge.rotation.z = Math.PI / 2
-    hinge.position.set(0, 0.105, -0.77)
+    hinge.position.set(0, 0.112, -0.9)
     laptop.add(hinge)
 
     const screenGroup = new THREE.Group()
-    screenGroup.position.set(0, 0.09, -0.77)
-    screenGroup.rotation.x = -1.18
+    screenGroup.position.set(0, 0.105, -0.91)
+    screenGroup.rotation.x = -1.13
     screenGroupRef.current = screenGroup
     laptop.add(screenGroup)
 
-    const lid = new THREE.Mesh(new THREE.BoxGeometry(2.48, 1.5, 0.055), aluminum)
-    lid.position.set(0, 0.75, -0.03)
+    const lid = new THREE.Mesh(new RoundedBoxGeometry(2.68, 1.68, 0.052, 10, 0.07), aluminum)
+    lid.position.set(0, 0.84, -0.028)
     lid.castShadow = true
     lid.receiveShadow = true
     screenGroup.add(lid)
+
+    const lidBevel = new THREE.Mesh(new RoundedBoxGeometry(2.5, 1.5, 0.012, 8, 0.06), darkAluminum)
+    lidBevel.position.set(0, 0.84, -0.064)
+    lidBevel.castShadow = true
+    screenGroup.add(lidBevel)
+
+    const cameraDot = new THREE.Mesh(
+      new THREE.CircleGeometry(0.018, 24),
+      new THREE.MeshBasicMaterial({ color: '#161a1d' }),
+    )
+    cameraDot.position.set(0, 1.54, -0.071)
+    cameraDot.rotation.y = Math.PI
+    screenGroup.add(cameraDot)
 
     const screenCanvas = document.createElement('canvas')
     screenCanvas.width = 900
@@ -196,15 +308,20 @@ export function LaptopIntro({ onComplete }: LaptopIntroProps) {
     screenTexture.colorSpace = THREE.SRGBColorSpace
 
     const screen = new THREE.Mesh(
-      new THREE.PlaneGeometry(2.16, 1.2),
-      new THREE.MeshBasicMaterial({ map: screenTexture }),
+      new THREE.PlaneGeometry(2.22, 1.25),
+      new THREE.MeshBasicMaterial({ map: screenTexture, toneMapped: false }),
     )
-    screen.position.set(0, 0.75, -0.064)
+    screen.position.set(0, 0.83, -0.073)
     screen.rotation.y = Math.PI
     screenGroup.add(screen)
 
-    const glow = new THREE.PointLight('#75ffd3', 0.35, 3.2)
-    glow.position.set(0, 0.8, 0.05)
+    const glass = new THREE.Mesh(createRoundedPlaneGeometry(2.34, 1.36, 0.05), glassMaterial)
+    glass.position.set(0, 0.83, -0.078)
+    glass.rotation.y = Math.PI
+    screenGroup.add(glass)
+
+    const glow = new THREE.PointLight('#75ffd3', 0.5, 3.2)
+    glow.position.set(0, 0.84, 0.05)
     screenGroup.add(glow)
 
     const vignette = new THREE.Mesh(
@@ -227,7 +344,7 @@ export function LaptopIntro({ onComplete }: LaptopIntroProps) {
       const current = orbitRef.current
       const isNarrow = window.innerWidth < MOBILE_BREAKPOINT
       const viewportRadius = current.radius * (isNarrow ? 1.55 : 1)
-      const targetX = isNarrow ? 0.38 : 0
+      const targetX = isNarrow ? 0.38 : 0.12
       camera.position.set(
         Math.sin(current.angle) * viewportRadius + pointerX * 0.12,
         current.height + pointerY * 0.08,
