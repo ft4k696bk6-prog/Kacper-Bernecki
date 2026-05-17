@@ -7,7 +7,7 @@ GitHub: https://github.com/ft4k696bk6-prog/Kacper-Bernecki
 
 ## Experience
 
-- Luxury minimalist table scene with a right-profile MacBook rendered in Three.js.
+- GLB-based table scene with a right-profile MacBook Pro M3 rendered in Three.js.
 - Smooth camera orbit around the table, laptop-opening animation, and final zoom into the screen.
 - Interactive desktop with draggable-style app windows, dock shortcuts, external links, and mobile-friendly click targets.
 - Functional portfolio sections for projects, about, skills, contact, booking, and games.
@@ -27,6 +27,12 @@ GitHub: https://github.com/ft4k696bk6-prog/Kacper-Bernecki
 - Games folder with Snake, Pong, Breakout, and Berni Rush.
 - Terminal with real commands that update the UI or open the correct destination.
 - About, Skills, Contact, Calendar, GitHub, LinkedIn, and Static Portfolio icons.
+
+## 3D Assets
+
+- MacBook model: `public/models/macbook-pro-m3.glb`
+- Wooden desk/chair model: `public/models/wooden-desk.glb`
+- The intro uses `GLTFLoader`, then animates the MacBook lid with GSAP around a runtime hinge pivot.
 
 ## Terminal Commands
 

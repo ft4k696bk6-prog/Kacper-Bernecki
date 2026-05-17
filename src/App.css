@@ -49,6 +49,12 @@
   outline: none;
 }
 
+.intro-hotspot:disabled {
+  cursor: wait;
+  color: rgba(247, 239, 225, 0.58);
+  border-color: rgba(241, 228, 204, 0.14);
+}
+
 .intro-caption {
   position: absolute;
   bottom: clamp(26px, 6vw, 72px);
