@@ -96,6 +96,10 @@
   transform: translateZ(0) scale(0.985);
   transform-origin: center;
   transition:
+    top 0.08s linear,
+    left 0.08s linear,
+    width 0.08s linear,
+    height 0.08s linear,
     opacity 0.08s ease,
     transform 0.12s ease;
 }
@@ -113,6 +117,7 @@
   transform: translateZ(0) scale(1);
 }
 
+.video-screen-ui.screen-dark,
 .video-screen-ui.screen-lock {
   overflow: hidden;
   background: #030405;
@@ -145,6 +150,13 @@
   clip-path: var(--screen-ui-clip, inset(0));
 }
 
+.video-screen-ui.screen-dark .screen-content,
+.video-screen-ui.screen-lock .screen-content,
+.video-screen-ui.screen-off .screen-content {
+  clip-path: inset(0);
+}
+
+.dark-screen-content,
 .lock-screen-content {
   display: grid;
   place-content: center;
@@ -152,18 +164,18 @@
   gap: clamp(7px, 1vw, 12px);
   text-align: center;
   background:
-    radial-gradient(circle at 58% 44%, rgba(214, 173, 93, 0.22), transparent 33%),
-    linear-gradient(90deg, rgba(0, 0, 0, 0.76), rgba(0, 0, 0, 0.18) 47%, rgba(0, 0, 0, 0.7)),
-    url('/images/macbook-wallpaper.png') 70% center / 220% auto;
+    radial-gradient(circle at 50% 38%, rgba(255, 255, 255, 0.06), transparent 36%),
+    linear-gradient(135deg, #050607, #010202 58%, #070808);
 }
 
+.dark-screen-content::before,
 .lock-screen-content::before {
   position: absolute;
   inset: 0;
   content: '';
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 28%, rgba(0, 0, 0, 0.16)),
-    radial-gradient(circle at 50% 42%, rgba(255, 255, 255, 0.13), transparent 34%);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 28%, rgba(0, 0, 0, 0.2)),
+    radial-gradient(circle at 50% 42%, rgba(255, 255, 255, 0.08), transparent 34%);
 }
 
 .lock-screen-content img,

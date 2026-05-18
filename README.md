@@ -34,6 +34,8 @@ GitHub: https://github.com/ft4k696bk6-prog/Kacper-Bernecki
 
 - Intro video: `public/videos/macbook-work-scene.mp4`
 - Shutdown video: `public/videos/macbook-work-scene-reverse-off.mp4`
+- Mobile intro video: `public/videos/macbook-work-scene-mobile.mp4`
+- Mobile shutdown video: `public/videos/macbook-work-scene-reverse-off-mobile.mp4`
 - MacBook wallpaper: `public/images/macbook-wallpaper.png`
 - GitHub avatar: `public/images/github-avatar.png`
 

@@ -3,10 +3,16 @@ import { profile } from '../data/portfolio'
 import { MacDesktop } from './MacDesktop'
 
 const INTRO_VIDEO_URL = '/videos/macbook-work-scene.mp4'
+const MOBILE_INTRO_VIDEO_URL = '/videos/macbook-work-scene-mobile.mp4'
 const REVERSE_VIDEO_URL = '/videos/macbook-work-scene-reverse-off.mp4'
+const MOBILE_REVERSE_VIDEO_URL = '/videos/macbook-work-scene-reverse-off-mobile.mp4'
 const AVATAR_URL = '/images/github-avatar.png'
 const WALLPAPER_URL = '/images/macbook-wallpaper.png'
-const ANALYSIS_WIDTH = 1280
+const DESKTOP_ANALYSIS_WIDTH = 1120
+const TABLET_ANALYSIS_WIDTH = 900
+const MOBILE_ANALYSIS_WIDTH = 680
+const DESKTOP_ANALYSIS_INTERVAL = 42
+const MOBILE_ANALYSIS_INTERVAL = 90
 const MIN_LOADER_TIME = 450
 const SCREEN_TRACK_POINTS = [
   { time: 3.78, top: 38.15, left: 38.2, width: 22.6, height: 28.15 },
@@ -15,30 +21,37 @@ const SCREEN_TRACK_POINTS = [
   { time: 4.75, top: 17.8, left: 29.6, width: 38.85, height: 48.6 },
   { time: 5.04, top: 14.92, left: 27.34, width: 42.42, height: 52.12 },
 ]
+const SCREEN_START_TIME = SCREEN_TRACK_POINTS[0].time
+const SCREEN_END_TIME = SCREEN_TRACK_POINTS[SCREEN_TRACK_POINTS.length - 1].time
 
 type ScenePhase = 'loading' | 'intro' | 'locked' | 'desktop' | 'reversing'
-type ScreenMode = 'hidden' | 'lock' | 'desktop' | 'off'
+type ScreenMode = 'hidden' | 'dark' | 'lock' | 'desktop' | 'off'
 type ScreenTrackPoint = (typeof SCREEN_TRACK_POINTS)[number]
 type ScreenBounds = { minX: number; minY: number; maxX: number; maxY: number }
 type ScreenSpan = { y: number; minX: number; maxX: number }
 type ScreenMask = {
   bounds: ScreenBounds
   coverClipPath: string
+  sourceHeight: number
+  sourceWidth: number
   uiClipPath: string
 }
+type TimedScreenMask = { mask: ScreenMask; time: number }
 
 export function LaptopIntro() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const screenRef = useRef<HTMLDivElement>(null)
   const lastMaskRef = useRef<ScreenMask | null>(null)
+  const maskTimelineRef = useRef<TimedScreenMask[]>([])
   const frameRef = useRef<number | null>(null)
-  const sourceRef = useRef(INTRO_VIDEO_URL)
+  const sourceRef = useRef(getIntroVideoUrl())
+  const lastAnalysisAtRef = useRef(0)
   const phaseRef = useRef<ScenePhase>('loading')
   const screenModeRef = useRef<ScreenMode>('hidden')
   const [phase, setPhase] = useState<ScenePhase>('loading')
   const [screenMode, setScreenMode] = useState<ScreenMode>('hidden')
-  const [videoSource, setVideoSource] = useState(INTRO_VIDEO_URL)
+  const [videoSource, setVideoSource] = useState(() => getIntroVideoUrl())
 
   const setPhaseState = useCallback((nextPhase: ScenePhase) => {
     phaseRef.current = nextPhase
@@ -77,7 +90,7 @@ export function LaptopIntro() {
       return false
     }
 
-    const frame = getMediaCoverFrame(video, canvas.width, canvas.height)
+    const frame = getMediaCoverFrame(video, mask.sourceWidth, mask.sourceHeight)
     if (!frame) {
       return false
     }
@@ -113,7 +126,7 @@ export function LaptopIntro() {
       return null
     }
 
-    const width = ANALYSIS_WIDTH
+    const width = getAnalysisWidth()
     const height = Math.round((width * video.videoHeight) / video.videoWidth)
     if (canvas.width !== width || canvas.height !== height) {
       canvas.width = width
@@ -135,12 +148,38 @@ export function LaptopIntro() {
     lastMaskRef.current = mask
     syncScreenToMask(mask)
 
+    if (phaseRef.current === 'intro') {
+      rememberMask(maskTimelineRef.current, video.currentTime, mask)
+    }
+
     if (phaseRef.current === 'intro' && screenModeRef.current === 'hidden') {
-      setScreenModeState('lock')
+      setScreenModeState('dark')
     }
 
     return mask
   }, [setScreenModeState, syncScreenToMask])
+
+  const syncReverseScreenCover = useCallback(() => {
+    const video = videoRef.current
+    if (!video) {
+      return
+    }
+
+    const forwardTime = SCREEN_END_TIME - video.currentTime
+    if (forwardTime < SCREEN_START_TIME - 0.12) {
+      setScreenModeState('hidden')
+      return
+    }
+
+    const mask = getNearestMask(maskTimelineRef.current, forwardTime)
+    if (mask) {
+      syncScreenToMask(mask)
+    } else {
+      syncScreenToVideo(forwardTime)
+    }
+
+    setScreenModeState('off')
+  }, [setScreenModeState, syncScreenToMask, syncScreenToVideo])
 
   const stopFrameLoop = useCallback(() => {
     if (frameRef.current !== null) {
@@ -154,10 +193,20 @@ export function LaptopIntro() {
       return
     }
 
-    function tick() {
-      analyzeScene()
+    function tick(timestamp: number) {
+      if (phaseRef.current === 'reversing') {
+        syncReverseScreenCover()
+        frameRef.current = window.requestAnimationFrame(tick)
+        return
+      }
 
-      if (phaseRef.current === 'intro' || phaseRef.current === 'reversing') {
+      const interval = getAnalysisInterval()
+      if (timestamp - lastAnalysisAtRef.current >= interval) {
+        lastAnalysisAtRef.current = timestamp
+        analyzeScene()
+      }
+
+      if (phaseRef.current === 'intro') {
         frameRef.current = window.requestAnimationFrame(tick)
         return
       }
@@ -166,7 +215,7 @@ export function LaptopIntro() {
     }
 
     frameRef.current = window.requestAnimationFrame(tick)
-  }, [analyzeScene])
+  }, [analyzeScene, syncReverseScreenCover])
 
   const setPlaybackSource = useCallback(
     async (source: string) => {
@@ -194,9 +243,11 @@ export function LaptopIntro() {
     }
 
     stopFrameLoop()
+    lastAnalysisAtRef.current = 0
+    maskTimelineRef.current = []
     setPhaseState('intro')
     setScreenModeState('hidden')
-    await setPlaybackSource(INTRO_VIDEO_URL)
+    await setPlaybackSource(getIntroVideoUrl())
     video.pause()
     video.playbackRate = 1
     video.currentTime = 0
@@ -231,7 +282,7 @@ export function LaptopIntro() {
       return
     }
 
-    await setPlaybackSource(INTRO_VIDEO_URL)
+    await setPlaybackSource(getIntroVideoUrl())
     video.pause()
     video.currentTime = 0
     syncScreenToVideo(0)
@@ -246,25 +297,26 @@ export function LaptopIntro() {
     stopFrameLoop()
     setPhaseState('reversing')
     setScreenModeState('off')
-    await setPlaybackSource(REVERSE_VIDEO_URL)
+    await setPlaybackSource(getReverseVideoUrl())
     video.pause()
     video.playbackRate = 1
     video.currentTime = 0
-    setScreenModeState('hidden')
+    syncReverseScreenCover()
+    startFrameLoop()
 
     try {
       await video.play()
     } catch {
       void resetAfterReverse()
     }
-  }, [resetAfterReverse, setPhaseState, setPlaybackSource, setScreenModeState, stopFrameLoop])
+  }, [resetAfterReverse, setPhaseState, setPlaybackSource, setScreenModeState, startFrameLoop, stopFrameLoop, syncReverseScreenCover])
 
   useEffect(() => {
-      const sceneVideo = videoRef.current
-      if (!sceneVideo) {
-        return
-      }
-      const activeVideo: HTMLVideoElement = sceneVideo
+    const sceneVideo = videoRef.current
+    if (!sceneVideo) {
+      return
+    }
+    const activeVideo: HTMLVideoElement = sceneVideo
 
     let cancelled = false
 
@@ -279,7 +331,7 @@ export function LaptopIntro() {
       reverseVideo.muted = true
       reverseVideo.playsInline = true
       reverseVideo.preload = 'auto'
-      reverseVideo.src = REVERSE_VIDEO_URL
+      reverseVideo.src = getReverseVideoUrl()
 
       await Promise.all([
         waitForVideoFrame(activeVideo),
@@ -383,6 +435,7 @@ export function LaptopIntro() {
         className={`laptop-screen-ui video-screen-ui screen-${screenMode} ${screenIsActive ? 'is-active' : ''}`}
         aria-hidden={!screenIsActive}
       >
+        {screenMode === 'dark' ? <div className="screen-content dark-screen-content" /> : null}
         {screenMode === 'lock' ? (
           <div className="screen-content lock-screen-content">
             <img src={AVATAR_URL} alt="" />
@@ -439,6 +492,72 @@ function wait(duration: number) {
   return new Promise<void>((resolve) => {
     window.setTimeout(resolve, duration)
   })
+}
+
+function getIntroVideoUrl() {
+  return isMobileViewport() ? MOBILE_INTRO_VIDEO_URL : INTRO_VIDEO_URL
+}
+
+function getReverseVideoUrl() {
+  return isMobileViewport() ? MOBILE_REVERSE_VIDEO_URL : REVERSE_VIDEO_URL
+}
+
+function getAnalysisWidth() {
+  if (typeof window === 'undefined') {
+    return DESKTOP_ANALYSIS_WIDTH
+  }
+
+  if (window.innerWidth <= 560) {
+    return MOBILE_ANALYSIS_WIDTH
+  }
+
+  if (window.innerWidth <= 860) {
+    return TABLET_ANALYSIS_WIDTH
+  }
+
+  return DESKTOP_ANALYSIS_WIDTH
+}
+
+function getAnalysisInterval() {
+  return isMobileViewport() ? MOBILE_ANALYSIS_INTERVAL : DESKTOP_ANALYSIS_INTERVAL
+}
+
+function isMobileViewport() {
+  return typeof window !== 'undefined' && window.matchMedia('(max-width: 560px)').matches
+}
+
+function rememberMask(timeline: TimedScreenMask[], time: number, mask: ScreenMask) {
+  const last = timeline[timeline.length - 1]
+  if (last && Math.abs(last.time - time) < 0.06) {
+    last.mask = mask
+    last.time = time
+    return
+  }
+
+  timeline.push({ time, mask })
+  if (timeline.length > 90) {
+    timeline.shift()
+  }
+}
+
+function getNearestMask(timeline: TimedScreenMask[], time: number) {
+  if (!timeline.length) {
+    return null
+  }
+
+  let nearest = timeline[0]
+  let nearestDistance = Math.abs(nearest.time - time)
+
+  for (let index = 1; index < timeline.length; index += 1) {
+    const candidate = timeline[index]
+    const distance = Math.abs(candidate.time - time)
+    if (distance < nearestDistance) {
+      nearest = candidate
+      nearestDistance = distance
+    }
+  }
+
+  return nearestDistance < 0.22 ? nearest.mask : null
 }
 
 function findScreenMask(data: Uint8ClampedArray, width: number, height: number): ScreenMask | null {
@@ -551,6 +670,8 @@ function findScreenMask(data: Uint8ClampedArray, width: number, height: number):
   return {
     bounds: coverBounds,
     coverClipPath: 'inset(0)',
+    sourceHeight: height,
+    sourceWidth: width,
     uiClipPath: getScreenClipPath(uiSpans, coverBounds),
   }
 }
