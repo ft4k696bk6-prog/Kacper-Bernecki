@@ -326,9 +326,13 @@ export function MacDesktop({ onShutdown }: MacDesktopProps) {
                 key={app.id}
                 aria-label={app.label}
                 onClick={() => openPanel(app.panel)}
+                onFocus={() => setHovered(app.label)}
                 onMouseEnter={() => setHovered(app.label)}
               >
                 <Icon size={22} />
+                <span className="dock-tooltip" aria-hidden="true">
+                  {app.label}
+                </span>
               </button>
             )
           })}
@@ -341,15 +345,28 @@ export function MacDesktop({ onShutdown }: MacDesktopProps) {
                 target={app.href.startsWith('http') ? '_blank' : undefined}
                 rel={app.href.startsWith('http') ? 'noreferrer' : undefined}
                 aria-label={app.label}
+                onFocus={() => setHovered(app.label)}
                 onMouseEnter={() => setHovered(app.label)}
               >
                 <Icon size={22} />
+                <span className="dock-tooltip" aria-hidden="true">
+                  {app.label}
+                </span>
               </a>
             )
           })}
           {onShutdown ? (
-            <button type="button" aria-label="Shut down MacBook" onClick={onShutdown} onMouseEnter={() => setHovered('Shut down')}>
+            <button
+              type="button"
+              aria-label="Shut down MacBook"
+              onClick={onShutdown}
+              onFocus={() => setHovered('Shut down')}
+              onMouseEnter={() => setHovered('Shut down')}
+            >
               <Power size={22} />
+              <span className="dock-tooltip" aria-hidden="true">
+                Shut down
+              </span>
             </button>
           ) : null}
         </div>

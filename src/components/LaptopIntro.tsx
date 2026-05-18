@@ -12,10 +12,10 @@ const MIN_LOADER_TIME = 450
 const VIDEO_SOURCE_WIDTH = 4096
 const VIDEO_SOURCE_HEIGHT = 2024
 const FINAL_SCREEN_RECT = {
-  x: 0.325,
-  y: 0.173,
-  width: 0.333,
-  height: 0.472,
+  x: 0.316,
+  y: 0.16,
+  width: 0.348,
+  height: 0.5,
 }
 
 type ScenePhase = 'loading' | 'intro' | 'locked' | 'desktop' | 'reversing'
