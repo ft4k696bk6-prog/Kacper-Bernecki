@@ -15,7 +15,7 @@ GitHub: https://github.com/ft4k696bk6-prog/Kacper-Bernecki
 ## Functional Links
 
 - GitHub: https://github.com/ft4k696bk6-prog
-- LinkedIn: https://www.linkedin.com/in/casper-bernecki-a8a81537b/?locale=pl
+- LinkedIn: https://www.linkedin.com/in/kacper-bernecki/
 - Static portfolio: https://kacper-portfolio.vercel.app
 - Booking: https://cal.com/kacper-bernecki/schedule-meeting
 - Email: Kacper.bernecki@gmail.com

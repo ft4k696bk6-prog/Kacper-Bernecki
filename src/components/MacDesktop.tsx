@@ -510,7 +510,7 @@ function ContactPanel() {
       <ActionCard href={`mailto:${profile.email}`} icon={Mail} label="Email" value={profile.email} />
       <ActionCard href={`tel:${profile.phone.replace(/\s/g, '')}`} icon={Phone} label="Phone" value={profile.phone} />
       <ActionCard href={profile.github} icon={GitBranch} label="GitHub" value="ft4k696bk6-prog" />
-      <ActionCard href={profile.linkedin} icon={UsersRound} label="LinkedIn" value="casper-bernecki" />
+      <ActionCard href={profile.linkedin} icon={UsersRound} label="LinkedIn" value="kacper-bernecki" />
       <ActionCard href={profile.staticPortfolio} icon={BriefcaseBusiness} label="Static portfolio" value="kacper-portfolio.vercel.app" />
       <ActionCard href={profile.calendar} icon={CalendarDays} label="Calendar" value="Cal.com booking" />
     </div>

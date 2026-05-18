@@ -7,7 +7,7 @@ export const profile = {
   phone: '+48 575 109 897',
   location: 'Polska',
   github: 'https://github.com/ft4k696bk6-prog',
-  linkedin: 'https://www.linkedin.com/in/casper-bernecki-a8a81537b/?locale=pl',
+  linkedin: 'https://www.linkedin.com/in/kacper-bernecki/',
   staticPortfolio: 'https://kacper-portfolio.vercel.app',
   calendar: 'https://cal.com/kacper-bernecki/schedule-meeting',
   newPortfolio: 'https://kacper-bernecki.vercel.app',
