@@ -20,7 +20,9 @@ type ScenePhase = 'loading' | 'intro' | 'locked' | 'desktop' | 'reversing'
 type ScreenMode = 'hidden' | 'lock' | 'desktop'
 type ReplacementMode = 'lock' | 'off'
 type ScreenTrackPoint = (typeof SCREEN_TRACK_POINTS)[number]
-type GreenBounds = { minX: number; minY: number; maxX: number; maxY: number }
+type ScreenBounds = { minX: number; minY: number; maxX: number; maxY: number }
+type ScreenSpan = { y: number; minX: number; maxX: number }
+type ScreenMask = { bounds: ScreenBounds; spans: ScreenSpan[]; clipPath: string }
 
 export function LaptopIntro() {
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -28,6 +30,7 @@ export function LaptopIntro() {
   const screenRef = useRef<HTMLDivElement>(null)
   const avatarRef = useRef<HTMLImageElement | null>(null)
   const replacementCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  const lastMaskRef = useRef<ScreenMask | null>(null)
   const renderFrameRef = useRef<number | null>(null)
   const reverseFrameRef = useRef<number | null>(null)
   const phaseRef = useRef<ScenePhase>('loading')
@@ -63,11 +66,46 @@ export function LaptopIntro() {
     screen.style.setProperty('--screen-height', `${track.height}vh`)
   }, [])
 
+  const syncScreenToMask = useCallback((mask: ScreenMask | null) => {
+    const screen = screenRef.current
+    const canvas = canvasRef.current
+    if (!screen || !canvas || !mask) {
+      return false
+    }
+
+    const frame = getCanvasCoverFrame(canvas)
+    if (!frame) {
+      return false
+    }
+
+    const { bounds } = mask
+    const left = frame.left + bounds.minX * frame.scale
+    const top = frame.top + bounds.minY * frame.scale
+    const width = (bounds.maxX - bounds.minX + 1) * frame.scale
+    const height = (bounds.maxY - bounds.minY + 1) * frame.scale
+
+    screen.style.setProperty('--screen-top', `${top}px`)
+    screen.style.setProperty('--screen-left', `${left}px`)
+    screen.style.setProperty('--screen-width', `${width}px`)
+    screen.style.setProperty('--screen-height', `${height}px`)
+    screen.style.setProperty('--screen-clip', mask.clipPath)
+    return true
+  }, [])
+
+  const syncScreenToLatestMask = useCallback(() => {
+    const video = videoRef.current
+    if (syncScreenToMask(lastMaskRef.current)) {
+      return
+    }
+
+    syncScreenToVideo(video?.duration || SCREEN_TRACK_POINTS[SCREEN_TRACK_POINTS.length - 1].time)
+  }, [syncScreenToMask, syncScreenToVideo])
+
   const renderScene = useCallback(() => {
     const video = videoRef.current
     const canvas = canvasRef.current
     if (!video || !canvas || !video.videoWidth || !video.videoHeight) {
-      return
+      return null
     }
 
     const width = CANVAS_WIDTH
@@ -79,33 +117,34 @@ export function LaptopIntro() {
 
     const context = canvas.getContext('2d', { willReadFrequently: true })
     if (!context) {
-      return
+      return null
     }
 
     context.drawImage(video, 0, 0, width, height)
 
     const frame = context.getImageData(0, 0, width, height)
-    const bounds = findGreenBounds(frame.data, width, height)
-    if (!bounds) {
-      return
+    const mask = findScreenMask(frame.data, width, height)
+    if (!mask) {
+      return null
     }
 
+    lastMaskRef.current = mask
     const replacement = getReplacementCanvas(
       replacementCanvasRef,
-      bounds.maxX - bounds.minX + 1,
-      bounds.maxY - bounds.minY + 1,
+      mask.bounds.maxX - mask.bounds.minX + 1,
+      mask.bounds.maxY - mask.bounds.minY + 1,
       replacementModeRef.current,
       avatarRef.current,
-      phaseRef.current !== 'locked',
     )
     const replacementContext = replacement.getContext('2d')
     if (!replacementContext) {
-      return
+      return mask
     }
 
     const replacementFrame = replacementContext.getImageData(0, 0, replacement.width, replacement.height)
-    replaceGreenScreen(frame.data, replacementFrame.data, width, bounds, replacement.width)
+    replaceGreenScreen(frame.data, replacementFrame.data, width, mask, replacement.width)
     context.putImageData(frame, 0, 0)
+    return mask
   }, [])
 
   const stopRenderLoop = useCallback(() => {
@@ -171,10 +210,10 @@ export function LaptopIntro() {
       return
     }
 
-    syncScreenToVideo(video.duration || SCREEN_TRACK_POINTS[SCREEN_TRACK_POINTS.length - 1].time)
+    syncScreenToLatestMask()
     setPhaseState('desktop')
     setScreenModeState('desktop')
-  }, [setPhaseState, setScreenModeState, syncScreenToVideo])
+  }, [setPhaseState, setScreenModeState, syncScreenToLatestMask])
 
   const reverseToStart = useCallback(() => {
     const video = videoRef.current
@@ -254,13 +293,15 @@ export function LaptopIntro() {
       activeVideo.pause()
       if (Number.isFinite(activeVideo.duration)) {
         activeVideo.currentTime = Math.max(activeVideo.duration - 0.04, 0)
-        syncScreenToVideo(activeVideo.duration)
       }
       replacementModeRef.current = 'lock'
+      const mask = renderScene()
+      if (!syncScreenToMask(mask)) {
+        syncScreenToVideo(activeVideo.duration || SCREEN_TRACK_POINTS[SCREEN_TRACK_POINTS.length - 1].time)
+      }
       setPhaseState('locked')
       setScreenModeState('lock')
       stopRenderLoop()
-      renderScene()
     }
 
     activeVideo.addEventListener('ended', handleEnded)
@@ -272,7 +313,27 @@ export function LaptopIntro() {
       stopReverse()
       stopRenderLoop()
     }
-  }, [playForward, renderScene, setPhaseState, setScreenModeState, stopRenderLoop, stopReverse, syncScreenToVideo])
+  }, [
+    playForward,
+    renderScene,
+    setPhaseState,
+    setScreenModeState,
+    stopRenderLoop,
+    stopReverse,
+    syncScreenToMask,
+    syncScreenToVideo,
+  ])
+
+  useEffect(() => {
+    function handleResize() {
+      if (screenModeRef.current !== 'hidden') {
+        syncScreenToLatestMask()
+      }
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [syncScreenToLatestMask])
 
   function handleScenePointerDown() {
     const video = videoRef.current
@@ -359,23 +420,26 @@ function wait(duration: number) {
   })
 }
 
-function findGreenBounds(data: Uint8ClampedArray, width: number, height: number): GreenBounds | null {
-  const mask = new Uint8Array(width * height)
+function findScreenMask(data: Uint8ClampedArray, width: number, height: number): ScreenMask | null {
+  const candidateMask = new Uint8Array(width * height)
+  const strictMask = new Uint8Array(width * height)
   const visited = new Uint8Array(width * height)
 
-  for (let index = 0; index < mask.length; index += 1) {
+  for (let index = 0; index < candidateMask.length; index += 1) {
     const offset = index * 4
     if (isGreenScreenPixel(data[offset], data[offset + 1], data[offset + 2])) {
-      mask[index] = 1
+      candidateMask[index] = 1
+      strictMask[index] = 1
+    } else if (isGreenScreenEdgePixel(data[offset], data[offset + 1], data[offset + 2])) {
+      candidateMask[index] = 1
     }
   }
 
-  let bestBounds: GreenBounds | null = null
-  let bestArea = 0
+  let bestComponent: { bounds: ScreenBounds; spans: ScreenSpan[]; strictArea: number } | null = null
   const stack: number[] = []
 
-  for (let index = 0; index < mask.length; index += 1) {
-    if (!mask[index] || visited[index]) {
+  for (let index = 0; index < candidateMask.length; index += 1) {
+    if (!candidateMask[index] || visited[index]) {
       continue
     }
 
@@ -383,11 +447,12 @@ function findGreenBounds(data: Uint8ClampedArray, width: number, height: number)
     stack.push(index)
     visited[index] = 1
 
-    let area = 0
+    let strictArea = 0
     let minX = width
     let minY = height
     let maxX = -1
     let maxY = -1
+    const rowRanges = new Map<number, { minX: number; maxX: number }>()
 
     while (stack.length) {
       const current = stack.pop()
@@ -397,59 +462,91 @@ function findGreenBounds(data: Uint8ClampedArray, width: number, height: number)
 
       const x = current % width
       const y = Math.floor(current / width)
-      area += 1
+      if (strictMask[current]) {
+        strictArea += 1
+      }
       minX = Math.min(minX, x)
       minY = Math.min(minY, y)
       maxX = Math.max(maxX, x)
       maxY = Math.max(maxY, y)
+      const row = rowRanges.get(y)
+      if (row) {
+        row.minX = Math.min(row.minX, x)
+        row.maxX = Math.max(row.maxX, x)
+      } else {
+        rowRanges.set(y, { minX: x, maxX: x })
+      }
 
       const left = current - 1
       const right = current + 1
       const up = current - width
       const down = current + width
 
-      if (x > 0 && mask[left] && !visited[left]) {
+      if (x > 0 && candidateMask[left] && !visited[left]) {
         visited[left] = 1
         stack.push(left)
       }
-      if (x < width - 1 && mask[right] && !visited[right]) {
+      if (x < width - 1 && candidateMask[right] && !visited[right]) {
         visited[right] = 1
         stack.push(right)
       }
-      if (y > 0 && mask[up] && !visited[up]) {
+      if (y > 0 && candidateMask[up] && !visited[up]) {
         visited[up] = 1
         stack.push(up)
       }
-      if (y < height - 1 && mask[down] && !visited[down]) {
+      if (y < height - 1 && candidateMask[down] && !visited[down]) {
         visited[down] = 1
         stack.push(down)
       }
     }
 
-    if (area > bestArea) {
-      bestArea = area
-      bestBounds = { minX, minY, maxX, maxY }
+    if (strictArea > (bestComponent?.strictArea ?? 0)) {
+      const spans = Array.from(rowRanges, ([y, range]) => ({ y, minX: range.minX, maxX: range.maxX })).sort(
+        (a, b) => a.y - b.y,
+      )
+      bestComponent = { bounds: { minX, minY, maxX, maxY }, spans, strictArea }
     }
   }
 
-  if (!bestBounds || bestArea < 900) {
+  if (!bestComponent || bestComponent.strictArea < 900) {
     return null
   }
 
-  return expandBounds(bestBounds, width, height, 8)
+  const spans = normalizeScreenSpans(bestComponent.spans, bestComponent.bounds, width, height)
+  const bounds = getBoundsFromSpans(spans)
+  if (!bounds) {
+    return null
+  }
+
+  return {
+    bounds,
+    spans,
+    clipPath: getScreenClipPath(spans, bounds),
+  }
 }
 
 function replaceGreenScreen(
   data: Uint8ClampedArray,
   replacement: Uint8ClampedArray,
   width: number,
-  bounds: GreenBounds,
+  mask: ScreenMask,
   replacementWidth: number,
 ) {
-  for (let y = bounds.minY; y <= bounds.maxY; y += 1) {
-    for (let x = bounds.minX; x <= bounds.maxX; x += 1) {
-      const index = (y * width + x) * 4
-      const replacementIndex = ((y - bounds.minY) * replacementWidth + (x - bounds.minX)) * 4
+  const { bounds, spans } = mask
+  const replacementHeight = bounds.maxY - bounds.minY + 1
+
+  for (const span of spans) {
+    const rowWidth = Math.max(span.maxX - span.minX, 1)
+    const replacementY = clamp(
+      Math.round(((span.y - bounds.minY) / Math.max(replacementHeight - 1, 1)) * (replacementHeight - 1)),
+      0,
+      replacementHeight - 1,
+    )
+
+    for (let x = span.minX; x <= span.maxX; x += 1) {
+      const index = (span.y * width + x) * 4
+      const replacementX = clamp(Math.round(((x - span.minX) / rowWidth) * (replacementWidth - 1)), 0, replacementWidth - 1)
+      const replacementIndex = (replacementY * replacementWidth + replacementX) * 4
       data[index] = replacement[replacementIndex]
       data[index + 1] = replacement[replacementIndex + 1]
       data[index + 2] = replacement[replacementIndex + 2]
@@ -463,13 +560,150 @@ function isGreenScreenPixel(red: number, green: number, blue: number) {
   return green > 118 && green - maxOtherChannel > 38 && green > red * 1.22 && green > blue * 1.18
 }
 
+function isGreenScreenEdgePixel(red: number, green: number, blue: number) {
+  const maxOtherChannel = Math.max(red, blue)
+  return green > 42 && green - maxOtherChannel > 7 && green > red * 1.06 && green > blue * 1.06
+}
+
+function normalizeScreenSpans(rawSpans: ScreenSpan[], bounds: ScreenBounds, canvasWidth: number, canvasHeight: number) {
+  const spansByY = new Map(rawSpans.map((span) => [span.y, span]))
+  const normalized: ScreenSpan[] = []
+  const maskHeight = bounds.maxY - bounds.minY + 1
+  const verticalBleed = clamp(Math.round(maskHeight * 0.012), 3, 8)
+  const firstY = clamp(bounds.minY - verticalBleed, 0, canvasHeight - 1)
+  const lastY = clamp(bounds.maxY + verticalBleed, 0, canvasHeight - 1)
+
+  for (let y = firstY; y <= lastY; y += 1) {
+    const span = spansByY.get(y) ?? interpolateMissingSpan(y, spansByY, bounds.minY, bounds.maxY)
+    if (!span) {
+      continue
+    }
+
+    const spanWidth = span.maxX - span.minX + 1
+    const edgeBleed = clamp(Math.round(spanWidth * 0.008), 2, 6)
+    normalized.push({
+      y,
+      minX: clamp(span.minX - edgeBleed, 0, canvasWidth - 1),
+      maxX: clamp(span.maxX + edgeBleed, 0, canvasWidth - 1),
+    })
+  }
+
+  return normalized
+}
+
+function interpolateMissingSpan(y: number, spansByY: Map<number, ScreenSpan>, minY: number, maxY: number) {
+  let previous = y - 1
+  while (previous >= minY && !spansByY.has(previous)) {
+    previous -= 1
+  }
+
+  let next = y + 1
+  while (next <= maxY && !spansByY.has(next)) {
+    next += 1
+  }
+
+  const previousSpan = spansByY.get(previous)
+  const nextSpan = spansByY.get(next)
+
+  if (previousSpan && nextSpan) {
+    const progress = (y - previous) / (next - previous)
+    return {
+      y,
+      minX: Math.round(interpolate(previousSpan.minX, nextSpan.minX, progress)),
+      maxX: Math.round(interpolate(previousSpan.maxX, nextSpan.maxX, progress)),
+    }
+  }
+
+  if (previousSpan) {
+    return { ...previousSpan, y }
+  }
+
+  if (nextSpan) {
+    return { ...nextSpan, y }
+  }
+
+  return null
+}
+
+function getBoundsFromSpans(spans: ScreenSpan[]): ScreenBounds | null {
+  if (!spans.length) {
+    return null
+  }
+
+  return spans.reduce<ScreenBounds>(
+    (bounds, span) => ({
+      minX: Math.min(bounds.minX, span.minX),
+      minY: Math.min(bounds.minY, span.y),
+      maxX: Math.max(bounds.maxX, span.maxX),
+      maxY: Math.max(bounds.maxY, span.y),
+    }),
+    { minX: Number.POSITIVE_INFINITY, minY: Number.POSITIVE_INFINITY, maxX: -1, maxY: -1 },
+  )
+}
+
+function getScreenClipPath(spans: ScreenSpan[], bounds: ScreenBounds) {
+  const sampleCount = Math.min(7, spans.length)
+  const top = getAverageSpan(spans.slice(0, sampleCount))
+  const bottom = getAverageSpan(spans.slice(-sampleCount))
+  const width = Math.max(bounds.maxX - bounds.minX, 1)
+  const height = Math.max(bounds.maxY - bounds.minY, 1)
+  const point = (x: number, y: number) =>
+    `${formatPercent(((x - bounds.minX) / width) * 100)} ${formatPercent(((y - bounds.minY) / height) * 100)}`
+
+  return `polygon(${point(top.minX, top.y)}, ${point(top.maxX, top.y)}, ${point(bottom.maxX, bottom.y)}, ${point(
+    bottom.minX,
+    bottom.y,
+  )})`
+}
+
+function getAverageSpan(spans: ScreenSpan[]) {
+  const total = spans.reduce(
+    (sum, span) => ({
+      y: sum.y + span.y,
+      minX: sum.minX + span.minX,
+      maxX: sum.maxX + span.maxX,
+    }),
+    { y: 0, minX: 0, maxX: 0 },
+  )
+
+  return {
+    y: total.y / spans.length,
+    minX: total.minX / spans.length,
+    maxX: total.maxX / spans.length,
+  }
+}
+
+function getCanvasCoverFrame(canvas: HTMLCanvasElement) {
+  const rect = canvas.getBoundingClientRect()
+  if (!canvas.width || !canvas.height || !rect.width || !rect.height) {
+    return null
+  }
+
+  const scale = Math.max(rect.width / canvas.width, rect.height / canvas.height)
+  const renderedWidth = canvas.width * scale
+  const renderedHeight = canvas.height * scale
+
+  return {
+    left: rect.left + (rect.width - renderedWidth) / 2,
+    top: rect.top + (rect.height - renderedHeight) / 2,
+    scale,
+  }
+}
+
+function formatPercent(value: number) {
+  return `${clamp(Number(value.toFixed(2)), -8, 108)}%`
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max)
+}
+
 function getReplacementCanvas(
   ref: MutableRefObject<HTMLCanvasElement | null>,
   width: number,
   height: number,
   mode: ReplacementMode,
   avatar: HTMLImageElement | null,
-  showOpenButton: boolean,
 ) {
   if (!ref.current) {
     ref.current = document.createElement('canvas')
@@ -486,7 +720,7 @@ function getReplacementCanvas(
     return canvas
   }
 
-  drawReplacementScreen(context, width, height, mode, avatar, showOpenButton)
+  drawReplacementScreen(context, width, height, mode, avatar)
   return canvas
 }
 
@@ -496,7 +730,6 @@ function drawReplacementScreen(
   height: number,
   mode: ReplacementMode,
   avatar: HTMLImageElement | null,
-  showOpenButton: boolean,
 ) {
   context.clearRect(0, 0, width, height)
 
@@ -541,9 +774,6 @@ function drawReplacementScreen(
   context.font = `500 ${Math.max(10, height * 0.035)}px Inter, Arial, sans-serif`
   context.fillText('Portfolio', centerX, textY + height * 0.07)
 
-  if (showOpenButton) {
-    drawOpenButton(context, centerX, height * 0.72, Math.max(74, width * 0.28), Math.max(28, height * 0.11))
-  }
 }
 
 function drawAvatar(
@@ -581,25 +811,6 @@ function drawAvatar(
   context.stroke()
 }
 
-function drawOpenButton(context: CanvasRenderingContext2D, centerX: number, centerY: number, width: number, height: number) {
-  const x = centerX - width / 2
-  const y = centerY - height / 2
-  const radius = Math.min(12, height / 2)
-
-  context.fillStyle = 'rgba(255, 255, 255, 0.1)'
-  context.strokeStyle = 'rgba(255, 255, 255, 0.24)'
-  context.lineWidth = 1
-  roundRect(context, x, y, width, height, radius)
-  context.fill()
-  context.stroke()
-
-  context.fillStyle = '#f8faf7'
-  context.font = `700 ${Math.max(12, height * 0.42)}px Inter, Arial, sans-serif`
-  context.textAlign = 'center'
-  context.textBaseline = 'middle'
-  context.fillText('Open', centerX, centerY + 1)
-}
-
 function drawScreenNotch(context: CanvasRenderingContext2D, width: number, height: number) {
   const notchWidth = width * 0.16
   const notchHeight = Math.max(7, height * 0.045)
@@ -609,15 +820,6 @@ function drawScreenNotch(context: CanvasRenderingContext2D, width: number, heigh
   context.fillStyle = '#020202'
   roundRect(context, x, y, notchWidth, notchHeight, notchHeight * 0.36)
   context.fill()
-}
-
-function expandBounds(bounds: GreenBounds, width: number, height: number, amount: number): GreenBounds {
-  return {
-    minX: Math.max(0, bounds.minX - amount),
-    minY: Math.max(0, bounds.minY - amount),
-    maxX: Math.min(width - 1, bounds.maxX + amount),
-    maxY: Math.min(height - 1, bounds.maxY + amount),
-  }
 }
 
 function roundRect(context: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) {

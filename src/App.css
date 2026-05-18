@@ -125,6 +125,7 @@
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.12),
     0 0 34px rgba(101, 255, 218, 0.14);
+  clip-path: var(--screen-clip, inset(0));
   pointer-events: auto;
 }
 
