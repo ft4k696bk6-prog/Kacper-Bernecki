@@ -1,10 +1,8 @@
 export const profile = {
   name: 'Kacper Bernecki',
-  title: 'AI-Assisted Web Developer & Business App Builder',
+  title: 'Frontend / Web App Developer',
   tagline:
-    'Tworze praktyczne aplikacje webowe, CRM-y, automatyzacje i narzedzia dla malych firm.',
-  email: 'Kacper.bernecki@gmail.com',
-  phone: '+48 575 109 897',
+    'Tworze aplikacje biznesowe w React, TypeScript, Next.js i Supabase: CRM-y, dashboardy, formularze i narzedzia workflow.',
   location: 'Polska',
   github: 'https://github.com/ft4k696bk6-prog',
   linkedin: 'https://www.linkedin.com/in/kacper-bernecki/',
@@ -16,17 +14,17 @@ export const profile = {
 
 export const about = [
   'Zaczynalem od biznesu, sprzedazy i pracy z klientem, dlatego aplikacje traktuje jako narzedzia do rozwiazywania realnych problemow, a nie tylko jako kod.',
-  'Interesuja mnie CRM-y, dashboardy, generatory ofert, landing page, automatyzacje i produkty wspierane AI, ktore pomagaja firmom szybciej dzialac.',
+  'Interesuja mnie CRM-y, dashboardy, formularze, generatory ofert, automatyzacje i integracje API, ktore pomagaja firmom szybciej dzialac.',
   'Najwazniejsze sa dla mnie prostota obslugi, czytelny interfejs, szybkie wdrozenie i profesjonalny efekt koncowy.',
 ]
 
 export const projects = [
   {
     id: 'b-crm',
-    title: 'B-CRM - CRM dla branzy OZE',
+    title: 'B-CRM - aplikacja CRM',
     description:
       'CRM dla zespolow sprzedazowych: leady, role, statusy, komentarze, callbacki, spotkania i panel administracyjny.',
-    stack: ['React', 'TypeScript', 'Supabase', 'PostgreSQL', 'Tailwind CSS', 'Vercel'],
+    stack: ['React', 'TypeScript', 'Next.js', 'Supabase', 'PostgreSQL', 'Tailwind CSS', 'Vercel'],
     liveUrl: 'https://b-crm-berni.vercel.app/login',
     repoUrl: 'https://github.com/ft4k696bk6-prog/B-CRM',
   },
@@ -44,7 +42,7 @@ export const projects = [
     description:
       'Narzedzie ofertowe do orientacyjnego wyliczania rat leasingu, formularza leadowego i prezentacji wariantow finansowania.',
     stack: ['React', 'TypeScript', 'Vite', 'Hono', 'Drizzle', 'Vercel'],
-    liveUrl: 'https://kalkulatorleasingu-7484-main.vercel.app',
+    liveUrl: 'https://kalkulator-leasingu-1-desktop.vercel.app',
     repoUrl: 'https://github.com/ft4k696bk6-prog/kalkulator.leasingu-1',
   },
   {
@@ -60,7 +58,7 @@ export const projects = [
     id: 'static-portfolio',
     title: 'Static Portfolio',
     description:
-      'Pierwsze portfolio z klasyczna prezentacja projektow, kalendarzem Cal.com i danymi kontaktowymi.',
+      'Glowne portfolio z case study B-CRM, sekcja dla osob technicznych, projektami i zabezpieczonym formularzem kontaktowym.',
     stack: ['Next.js', 'TypeScript', 'Tailwind CSS', 'Vercel'],
     liveUrl: 'https://kacper-portfolio.vercel.app',
   },
@@ -81,7 +79,7 @@ export const skillGroups = [
   },
   {
     title: 'Produkt',
-    items: ['AI-assisted development', 'UX aplikacji', 'Automatyzacje', 'Deployment', 'GitHub'],
+    items: ['UX aplikacji', 'Automatyzacje', 'Deployment', 'GitHub', 'Dokumentacja techniczna'],
   },
 ]
 

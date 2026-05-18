@@ -1,89 +1,71 @@
 # Kacper-Bernecki
 
-Interactive cinematic MacBook portfolio built with React, Vite, TypeScript, and pre-rendered MP4 intro scenes.
+Secondary experimental interactive portfolio built as a cinematic MacBook-style web experience. The main professional portfolio is https://kacper-portfolio.vercel.app.
 
-Live site: https://kacper-bernecki.vercel.app  
-GitHub: https://github.com/ft4k696bk6-prog/Kacper-Bernecki
+PL: To dodatkowy, eksperymentalny projekt interaktywny. Nie zastępuje głównego portfolio technicznego.
 
-## Experience
+## Live demo
 
-- Native clean MP4 intro with a MacBook opening on a minimalist desk.
-- Dark lock screen shown only after the cinematic intro reaches the final frame.
-- Smooth shutdown using a preloaded local reverse video with the laptop screen already turned off.
-- Interactive Mac-style desktop with dock shortcuts, external links, and mobile-friendly focus windows.
-- Functional portfolio sections for projects, about, skills, contact, booking, and games.
+https://kacper-bernecki.vercel.app
 
-## Functional Links
+## Screenshots
 
-- GitHub: https://github.com/ft4k696bk6-prog
-- LinkedIn: https://www.linkedin.com/in/kacper-bernecki/
-- Static portfolio: https://kacper-portfolio.vercel.app
-- Booking: https://cal.com/kacper-bernecki/schedule-meeting
-- Email: Kacper.bernecki@gmail.com
-- Phone: +48 575 109 897
+Screenshots should be added to `docs/screenshots/`. Placeholder links are not included.
 
-## Desktop Apps
+## Features
 
-- Projects folder with live and repository links.
-- Games folder with Berni Rush embedded in the laptop plus Neon Runner, Snake, Pong, and Breakout.
-- Terminal with real commands that update the UI or open the correct destination.
-- Calendar panel with date/time selection before confirming through Cal.com.
-- About, Projects, Contact, Calendar, GitHub, LinkedIn, Static Portfolio, Email, Phone, and Power icons.
+- Pre-rendered MP4 intro and shutdown scenes.
+- Interactive Mac-style desktop with dock shortcuts.
+- Project, skills, about, contact, calendar and game panels.
+- Terminal commands that open panels or external project links.
+- Embedded Berni Rush frame plus small browser games.
+- Responsive handling for mobile-oriented intro assets.
 
-## Media Assets
+## Tech stack
 
-- Clean intro video: `public/videos/macbook-work-scene-clean.mp4`
-- Clean shutdown video: `public/videos/macbook-work-scene-reverse-clean.mp4`
-- Mobile clean intro video: `public/videos/macbook-work-scene-clean-mobile.mp4`
-- Mobile clean shutdown video: `public/videos/macbook-work-scene-reverse-clean-mobile.mp4`
-- MacBook wallpaper: `public/images/macbook-wallpaper.png`
-- MacBook screen wallpaper crop: `public/images/macbook-wallpaper-screen.png`
-- GitHub avatar: `public/images/github-avatar.png`
+- React
+- TypeScript
+- Vite
+- CSS
+- lucide-react
+- Vercel
 
-## Terminal Commands
+## Project structure
 
-```text
-help
-about
-projects
-skills
-contact
-open github
-open linkedin
-open portfolio
-open calendar
-play snake
-play pong
-play breakout
-play neon runner
-berni rush
-clear
-```
+- `src/components/` — MacBook intro and desktop UI.
+- `src/data/portfolio.ts` — project links, profile copy and skill groups.
+- `src/games/` — embedded mini game panels.
+- `public/videos/` — intro and shutdown videos.
+- `public/images/` — avatar and wallpaper assets.
+- `docs/` — roadmap, changelog, issue backlog and screenshots folder.
 
-## Local Development
+## Getting started
 
 ```bash
+git clone https://github.com/ft4k696bk6-prog/Kacper-Bernecki.git
+cd Kacper-Bernecki
 npm install
 npm run dev
 ```
 
-The local development server prints the URL, usually `http://localhost:5173`.
-
-## Quality Checks
+Quality checks:
 
 ```bash
 npm run lint
+npm run typecheck
 npm run build
 ```
 
-`npm run build` creates the production output in `dist/`.
+## Positioning
 
-## Deploy
+This repository is intentionally marked as an experimental interactive portfolio. The primary positioning is:
 
-This project is configured for Vercel.
+Frontend / Web App Developer focused on React, TypeScript, Next.js, Supabase, CRM workflows, dashboards, forms and business web applications.
 
-```bash
-npx vercel deploy --prod --yes
-```
+## Status
 
-The production alias is `https://kacper-bernecki.vercel.app`.
+Experimental interactive portfolio.
+
+## License
+
+MIT.
