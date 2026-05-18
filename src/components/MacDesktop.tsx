@@ -1,9 +1,8 @@
-import { useMemo, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import type { ComponentType, FormEvent, KeyboardEvent, ReactNode } from 'react'
 import {
   BriefcaseBusiness,
   CalendarDays,
-  Code2,
   ExternalLink,
   FolderKanban,
   Gamepad2,
@@ -15,45 +14,61 @@ import {
   Terminal,
   UserRound,
   UsersRound,
-  Wrench,
 } from 'lucide-react'
 import { about, profile, projects, skillGroups, terminalCommands } from '../data/portfolio'
+import { BerniRushFrame } from '../games/BerniRushFrame'
 import { BreakoutGame } from '../games/BreakoutGame'
+import { NeonRunnerGame } from '../games/NeonRunnerGame'
 import { PongGame } from '../games/PongGame'
 import { SnakeGame } from '../games/SnakeGame'
 
-type Panel =
-  | 'about'
-  | 'projects'
-  | 'skills'
-  | 'terminal'
-  | 'games'
-  | 'contact'
-  | 'calendar'
-  | null
-
-type Game = 'snake' | 'pong' | 'breakout' | null
+type Panel = 'about' | 'projects' | 'skills' | 'terminal' | 'games' | 'contact' | 'calendar' | null
+type Game = 'snake' | 'pong' | 'breakout' | 'berni-rush' | 'neon-runner' | null
 type Line = { id: number; tone: 'system' | 'input' | 'output' | 'error'; text: string | string[] }
+type PanelApp = {
+  id: string
+  label: string
+  icon: ComponentType<{ size?: number }>
+  panel: Exclude<Panel, null>
+}
+type LinkApp = {
+  id: string
+  label: string
+  icon: ComponentType<{ size?: number }>
+  href: string
+}
+type DateOption = {
+  day: string
+  fullLabel: string
+  month: string
+  value: string
+  weekday: string
+}
+
+const TIME_ZONE = 'Europe/Warsaw'
+const TIME_OPTIONS = ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30']
 
 const initialLines: Line[] = [
   {
     id: 1,
     tone: 'system',
-    text: ['KACPER_OS desktop terminal', 'Type "help" to see every working command.'],
+    text: ['KACPER_OS terminal', 'Type "help" to see available commands.'],
   },
 ]
 
-const desktopApps = [
-  { id: 'projects', label: 'Projects', icon: FolderKanban, panel: 'projects' as const },
-  { id: 'about', label: 'About', icon: UserRound, panel: 'about' as const },
-  { id: 'skills', label: 'Skills', icon: Wrench, panel: 'skills' as const },
-  { id: 'terminal', label: 'Terminal', icon: Terminal, panel: 'terminal' as const },
-  { id: 'games', label: 'Games', icon: Gamepad2, panel: 'games' as const },
-  { id: 'contact', label: 'Contact', icon: Mail, panel: 'contact' as const },
-  { id: 'calendar', label: 'Calendar', icon: CalendarDays, panel: 'calendar' as const },
+const desktopApps: PanelApp[] = [
+  { id: 'projects', label: 'Projects', icon: FolderKanban, panel: 'projects' },
+  { id: 'about', label: 'About', icon: UserRound, panel: 'about' },
+  { id: 'games', label: 'Games', icon: Gamepad2, panel: 'games' },
+  { id: 'contact', label: 'Contact', icon: Mail, panel: 'contact' },
 ]
 
-const linkApps = [
+const dockPanelApps: PanelApp[] = [
+  { id: 'terminal', label: 'Terminal', icon: Terminal, panel: 'terminal' },
+  { id: 'calendar', label: 'Calendar', icon: CalendarDays, panel: 'calendar' },
+]
+
+const dockLinkApps: LinkApp[] = [
   { id: 'github', label: 'GitHub', icon: GitBranch, href: profile.github },
   { id: 'linkedin', label: 'LinkedIn', icon: UsersRound, href: profile.linkedin },
   { id: 'portfolio', label: 'Static portfolio', icon: BriefcaseBusiness, href: profile.staticPortfolio },
@@ -66,8 +81,8 @@ type MacDesktopProps = {
 }
 
 export function MacDesktop({ onShutdown }: MacDesktopProps) {
-  const [panel, setPanel] = useState<Panel>('projects')
-  const [hovered, setHovered] = useState<string>('Projects')
+  const [panel, setPanel] = useState<Panel>(null)
+  const [hovered, setHovered] = useState<string>('Kacper OS')
   const [game, setGame] = useState<Game>(null)
   const [command, setCommand] = useState('')
   const [history, setHistory] = useState<string[]>([])
@@ -75,11 +90,10 @@ export function MacDesktop({ onShutdown }: MacDesktopProps) {
   const [lines, setLines] = useState<Line[]>(initialLines)
   const lineId = useRef(2)
 
-  const allApps = useMemo(() => [...desktopApps, ...linkApps], [])
-
-  function openPanel(nextPanel: Panel) {
+  function openPanel(nextPanel: Exclude<Panel, null>) {
     setGame(null)
     setPanel(nextPanel)
+    setHovered(getPanelTitle(nextPanel))
   }
 
   function openExternal(url: string) {
@@ -88,6 +102,12 @@ export function MacDesktop({ onShutdown }: MacDesktopProps) {
 
   function appendLine(tone: Line['tone'], text: string | string[]) {
     setLines((current) => [...current, { id: lineId.current++, tone, text }])
+  }
+
+  function openGame(nextGame: Exclude<Game, null>) {
+    setPanel('games')
+    setGame(nextGame)
+    setHovered(getGameTitle(nextGame))
   }
 
   function runCommand(raw: string) {
@@ -115,13 +135,13 @@ export function MacDesktop({ onShutdown }: MacDesktopProps) {
     }
 
     if (normalized === 'about') {
-      setPanel('about')
+      openPanel('about')
       appendLine('output', [profile.name, profile.title, ...about])
       return
     }
 
     if (normalized === 'projects') {
-      setPanel('projects')
+      openPanel('projects')
       appendLine(
         'output',
         projects.map((project, index) => `${index + 1}. ${project.title}: ${project.description}`),
@@ -130,7 +150,7 @@ export function MacDesktop({ onShutdown }: MacDesktopProps) {
     }
 
     if (normalized === 'skills') {
-      setPanel('skills')
+      openPanel('skills')
       appendLine(
         'output',
         skillGroups.map((group) => `${group.title}: ${group.items.join(', ')}`),
@@ -139,67 +159,62 @@ export function MacDesktop({ onShutdown }: MacDesktopProps) {
     }
 
     if (normalized === 'contact') {
-      setPanel('contact')
-      appendLine('output', [
-        `Email: ${profile.email}`,
-        `Phone: ${profile.phone}`,
-        `GitHub: ${profile.github}`,
-        `LinkedIn: ${profile.linkedin}`,
-        `Calendar: ${profile.calendar}`,
-      ])
+      openPanel('contact')
+      appendLine('output', [`Email: ${profile.email}`, `Phone: ${profile.phone}`, `GitHub: ${profile.github}`, `LinkedIn: ${profile.linkedin}`])
       return
     }
 
     if (normalized === 'open github') {
       openExternal(profile.github)
-      appendLine('system', `Opening GitHub: ${profile.github}`)
+      appendLine('system', 'GitHub opened.')
       return
     }
 
     if (normalized === 'open linkedin') {
       openExternal(profile.linkedin)
-      appendLine('system', `Opening LinkedIn: ${profile.linkedin}`)
+      appendLine('system', 'LinkedIn opened.')
       return
     }
 
     if (normalized === 'open portfolio') {
       openExternal(profile.staticPortfolio)
-      appendLine('system', `Opening static portfolio: ${profile.staticPortfolio}`)
+      appendLine('system', 'Static portfolio opened.')
       return
     }
 
     if (normalized === 'open calendar') {
-      setPanel('calendar')
-      openExternal(profile.calendar)
-      appendLine('system', `Opening booking calendar: ${profile.calendar}`)
+      openPanel('calendar')
+      appendLine('system', 'Calendar opened.')
       return
     }
 
     if (normalized === 'play snake') {
-      setPanel('games')
-      setGame('snake')
-      appendLine('system', 'Snake started. Use arrows or mobile controls.')
+      openGame('snake')
+      appendLine('system', 'Snake launched.')
       return
     }
 
     if (normalized === 'play pong') {
-      setPanel('games')
-      setGame('pong')
-      appendLine('system', 'Pong started. Use W/S, arrows or mobile controls.')
+      openGame('pong')
+      appendLine('system', 'Pong launched.')
       return
     }
 
     if (normalized === 'play breakout') {
-      setPanel('games')
-      setGame('breakout')
-      appendLine('system', 'Breakout started. Use A/D, arrows or mobile controls.')
+      openGame('breakout')
+      appendLine('system', 'Breakout launched.')
+      return
+    }
+
+    if (normalized === 'play neon runner') {
+      openGame('neon-runner')
+      appendLine('system', 'Neon Runner launched.')
       return
     }
 
     if (normalized === 'berni rush') {
-      setPanel('games')
-      openExternal('https://bernirushdemooo.vercel.app')
-      appendLine('system', 'Opening Berni Rush live build.')
+      openGame('berni-rush')
+      appendLine('system', 'Berni Rush launched.')
       return
     }
 
@@ -244,20 +259,14 @@ export function MacDesktop({ onShutdown }: MacDesktopProps) {
       <div className="desktop-wallpaper">
         <div className="menu-bar">
           <div>
-            <Sparkles size={16} />
             <span>Kacper OS</span>
           </div>
           <div className="menu-actions">
             <span>{profile.name}</span>
-            {onShutdown ? (
-              <button type="button" className="menu-power" aria-label="Shut down MacBook" onClick={onShutdown}>
-                <Power size={14} />
-              </button>
-            ) : null}
           </div>
         </div>
 
-        <div className="desktop-layout">
+        <div className={`desktop-layout ${panel ? 'has-window' : 'is-wallpaper-only'}`}>
           <div className="icon-grid" aria-label="Desktop icons">
             {desktopApps.map((app) => {
               const Icon = app.icon
@@ -276,24 +285,6 @@ export function MacDesktop({ onShutdown }: MacDesktopProps) {
                 </button>
               )
             })}
-            {linkApps.map((app) => {
-              const Icon = app.icon
-              return (
-                <a
-                  className="desktop-icon"
-                  href={app.href}
-                  key={app.id}
-                  target={app.href.startsWith('http') ? '_blank' : undefined}
-                  rel={app.href.startsWith('http') ? 'noreferrer' : undefined}
-                  onMouseEnter={() => setHovered(app.label)}
-                >
-                  <span>
-                    <Icon size={28} />
-                  </span>
-                  <small>{app.label}</small>
-                </a>
-              )
-            })}
           </div>
 
           <div className="desktop-center">
@@ -309,7 +300,7 @@ export function MacDesktop({ onShutdown }: MacDesktopProps) {
                 {panel === 'projects' ? <ProjectsPanel /> : null}
                 {panel === 'about' ? <AboutPanel /> : null}
                 {panel === 'skills' ? <SkillsPanel /> : null}
-                {panel === 'contact' ? <ContactPanel /> : null}
+                {panel === 'contact' ? <ContactPanel onOpenCalendar={() => openPanel('calendar')} /> : null}
                 {panel === 'calendar' ? <CalendarPanel /> : null}
                 {panel === 'games' ? <GamesPanel game={game} setGame={setGame} /> : null}
                 {panel === 'terminal' ? (
@@ -322,34 +313,13 @@ export function MacDesktop({ onShutdown }: MacDesktopProps) {
                   />
                 ) : null}
               </AppWindow>
-            ) : (
-              <div className="desktop-empty">
-                <Code2 size={34} />
-                <h1>{profile.name}</h1>
-                <p>{profile.tagline}</p>
-              </div>
-            )}
+            ) : null}
           </div>
         </div>
 
         <div className="dock" aria-label="Quick actions">
-          {allApps.slice(0, 10).map((app) => {
+          {dockPanelApps.map((app) => {
             const Icon = app.icon
-            if ('href' in app) {
-              return (
-                <a
-                  key={app.id}
-                  href={app.href}
-                  target={app.href.startsWith('http') ? '_blank' : undefined}
-                  rel={app.href.startsWith('http') ? 'noreferrer' : undefined}
-                  aria-label={app.label}
-                  onMouseEnter={() => setHovered(app.label)}
-                >
-                  <Icon size={22} />
-                </a>
-              )
-            }
-
             return (
               <button
                 type="button"
@@ -360,6 +330,21 @@ export function MacDesktop({ onShutdown }: MacDesktopProps) {
               >
                 <Icon size={22} />
               </button>
+            )
+          })}
+          {dockLinkApps.map((app) => {
+            const Icon = app.icon
+            return (
+              <a
+                key={app.id}
+                href={app.href}
+                target={app.href.startsWith('http') ? '_blank' : undefined}
+                rel={app.href.startsWith('http') ? 'noreferrer' : undefined}
+                aria-label={app.label}
+                onMouseEnter={() => setHovered(app.label)}
+              >
+                <Icon size={22} />
+              </a>
             )
           })}
           {onShutdown ? (
@@ -375,20 +360,21 @@ export function MacDesktop({ onShutdown }: MacDesktopProps) {
 
 function describeCommand(command: string) {
   const descriptions: Record<string, string> = {
-    help: 'show this list',
-    about: 'open the about folder and print bio',
-    projects: 'open project folder and list work',
-    skills: 'open skill folder and print stack',
-    contact: 'show contact data',
-    'open github': 'open GitHub profile',
-    'open linkedin': 'open LinkedIn profile',
-    'open portfolio': 'open the static portfolio',
-    'open calendar': 'open Cal.com booking link',
+    help: 'show commands',
+    about: 'open about',
+    projects: 'open projects',
+    skills: 'open skills',
+    contact: 'open contact',
+    'open github': 'open GitHub',
+    'open linkedin': 'open LinkedIn',
+    'open portfolio': 'open static portfolio',
+    'open calendar': 'open calendar',
     'play snake': 'launch Snake',
     'play pong': 'launch Pong',
     'play breakout': 'launch Breakout',
-    'berni rush': 'open Berni Rush live game',
-    clear: 'clear terminal output',
+    'play neon runner': 'launch Neon Runner',
+    'berni rush': 'launch Berni Rush',
+    clear: 'clear terminal',
   }
   return descriptions[command] ?? 'run command'
 }
@@ -404,6 +390,17 @@ function getPanelTitle(panel: Exclude<Panel, null>) {
     calendar: 'Book a meeting',
   }
   return labels[panel]
+}
+
+function getGameTitle(game: Exclude<Game, null>) {
+  const labels: Record<Exclude<Game, null>, string> = {
+    snake: 'Snake',
+    pong: 'Pong',
+    breakout: 'Breakout',
+    'berni-rush': 'Berni Rush',
+    'neon-runner': 'Neon Runner',
+  }
+  return labels[game]
 }
 
 function AppWindow({
@@ -504,15 +501,15 @@ function SkillsPanel() {
   )
 }
 
-function ContactPanel() {
+function ContactPanel({ onOpenCalendar }: { onOpenCalendar: () => void }) {
   return (
     <div className="contact-grid">
       <ActionCard href={`mailto:${profile.email}`} icon={Mail} label="Email" value={profile.email} />
       <ActionCard href={`tel:${profile.phone.replace(/\s/g, '')}`} icon={Phone} label="Phone" value={profile.phone} />
       <ActionCard href={profile.github} icon={GitBranch} label="GitHub" value="ft4k696bk6-prog" />
       <ActionCard href={profile.linkedin} icon={UsersRound} label="LinkedIn" value="kacper-bernecki" />
-      <ActionCard href={profile.staticPortfolio} icon={BriefcaseBusiness} label="Static portfolio" value="kacper-portfolio.vercel.app" />
-      <ActionCard href={profile.calendar} icon={CalendarDays} label="Calendar" value="Cal.com booking" />
+      <ActionCard href={profile.staticPortfolio} icon={BriefcaseBusiness} label="Portfolio" value="kacper-portfolio.vercel.app" />
+      <ActionButton icon={CalendarDays} label="Calendar" value="Wybierz termin" onClick={onOpenCalendar} />
     </div>
   )
 }
@@ -542,19 +539,107 @@ function ActionCard({
   )
 }
 
-function CalendarPanel() {
+function ActionButton({
+  icon: Icon,
+  label,
+  onClick,
+  value,
+}: {
+  icon: ComponentType<{ size?: number }>
+  label: string
+  onClick: () => void
+  value: string
+}) {
   return (
-    <div className="panel-stack">
-      <p className="eyebrow">Europe/Warsaw</p>
-      <h1>Umow spotkanie</h1>
-      <p>
-        Rezerwacja prowadzi do Cal.com. Ikona kalendarza i komenda terminala "open calendar"
-        otwieraja ten sam link.
-      </p>
-      <a className="primary-link" href={profile.calendar} target="_blank" rel="noreferrer">
-        <CalendarDays size={18} />
-        Otworz kalendarz
-      </a>
+    <button type="button" className="action-card" onClick={onClick}>
+      <Icon size={22} />
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </button>
+  )
+}
+
+function CalendarPanel() {
+  const [dateOptions] = useState<DateOption[]>(() => buildDateOptions())
+  const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  const [selectedTime, setSelectedTime] = useState<string | null>(null)
+  const selectedOption = dateOptions.find((option) => option.value === selectedDate)
+  const selectedSlot = selectedDate && selectedTime ? toCalSlotValue(selectedDate, selectedTime) : null
+  const confirmUrl = selectedSlot ? `${profile.calendar}?slot=${encodeURIComponent(selectedSlot)}` : profile.calendar
+
+  if (!selectedDate) {
+    return (
+      <div className="calendar-widget">
+        <div>
+          <p className="eyebrow">Europe/Warsaw</p>
+          <h1>Umow spotkanie</h1>
+          <p>Wybierz dzien, ktory pasuje do krotkiej rozmowy o projekcie.</p>
+        </div>
+        <div className="calendar-day-grid">
+          {dateOptions.map((option) => (
+            <button type="button" key={option.value} aria-label={option.fullLabel} onClick={() => setSelectedDate(option.value)}>
+              <span>{option.weekday}</span>
+              <strong>{option.day}</strong>
+              <small>{option.month}</small>
+            </button>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (!selectedTime) {
+    return (
+      <div className="calendar-widget">
+        <div className="calendar-toolbar">
+          <div>
+            <p className="eyebrow">{selectedOption?.fullLabel}</p>
+            <h1>Wybierz godzine</h1>
+            <p>Godziny sa podane dla strefy Europe/Warsaw.</p>
+          </div>
+          <button type="button" onClick={() => setSelectedDate(null)}>
+            Zmien dzien
+          </button>
+        </div>
+        <div className="calendar-time-grid">
+          {TIME_OPTIONS.map((time) => (
+            <button type="button" key={time} onClick={() => setSelectedTime(time)}>
+              {time}
+            </button>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="calendar-widget">
+      <div>
+        <p className="eyebrow">Potwierdzenie</p>
+        <h1>Termin gotowy</h1>
+      </div>
+      <div className="calendar-summary">
+        <p>
+          <span>Dzien</span>
+          <strong>{selectedOption?.fullLabel}</strong>
+        </p>
+        <p>
+          <span>Godzina</span>
+          <strong>{selectedTime}</strong>
+        </p>
+      </div>
+      <div className="calendar-actions">
+        <a className="primary-link" href={confirmUrl} target="_blank" rel="noreferrer">
+          <CalendarDays size={18} />
+          Potwierdz termin
+        </a>
+        <button type="button" onClick={() => setSelectedTime(null)}>
+          Zmien godzine
+        </button>
+        <button type="button" onClick={() => setSelectedDate(null)}>
+          Zmien dzien
+        </button>
+      </div>
     </div>
   )
 }
@@ -562,39 +647,50 @@ function CalendarPanel() {
 function GamesPanel({ game, setGame }: { game: Game; setGame: (game: Game) => void }) {
   if (game) {
     return (
-      <div className="game-panel">
+      <div className="game-panel game-focus-panel">
         <div className="game-header">
-          <strong>{game.toUpperCase()}</strong>
+          <strong>{getGameTitle(game)}</strong>
           <button type="button" onClick={() => setGame(null)}>
-            Back to games
+            Back
           </button>
         </div>
         {game === 'snake' ? <SnakeGame /> : null}
         {game === 'pong' ? <PongGame /> : null}
         {game === 'breakout' ? <BreakoutGame /> : null}
+        {game === 'berni-rush' ? <BerniRushFrame /> : null}
+        {game === 'neon-runner' ? <NeonRunnerGame /> : null}
       </div>
     )
   }
 
   return (
     <div className="game-launcher">
-      <button type="button" onClick={() => setGame('snake')}>
-        <Gamepad2 size={24} />
-        Snake
-      </button>
-      <button type="button" onClick={() => setGame('pong')}>
-        <Gamepad2 size={24} />
-        Pong
-      </button>
-      <button type="button" onClick={() => setGame('breakout')}>
-        <Gamepad2 size={24} />
-        Breakout
-      </button>
-      <a href="https://bernirushdemooo.vercel.app" target="_blank" rel="noreferrer">
-        <Sparkles size={24} />
-        Berni Rush
-      </a>
+      <GameButton label="Berni Rush" description="Arena survival" icon={Sparkles} onClick={() => setGame('berni-rush')} />
+      <GameButton label="Neon Runner" description="Jump and dodge" icon={Sparkles} onClick={() => setGame('neon-runner')} />
+      <GameButton label="Snake" description="Classic grid" icon={Gamepad2} onClick={() => setGame('snake')} />
+      <GameButton label="Pong" description="Arcade duel" icon={Gamepad2} onClick={() => setGame('pong')} />
+      <GameButton label="Breakout" description="Brick chase" icon={Gamepad2} onClick={() => setGame('breakout')} />
     </div>
+  )
+}
+
+function GameButton({
+  description,
+  icon: Icon,
+  label,
+  onClick,
+}: {
+  description: string
+  icon: ComponentType<{ size?: number }>
+  label: string
+  onClick: () => void
+}) {
+  return (
+    <button type="button" onClick={onClick}>
+      <Icon size={24} />
+      <strong>{label}</strong>
+      <span>{description}</span>
+    </button>
   )
 }
 
@@ -639,4 +735,76 @@ function TerminalPanel({
       </form>
     </div>
   )
+}
+
+function buildDateOptions() {
+  const dayFormatter = new Intl.DateTimeFormat('pl-PL', { day: '2-digit' })
+  const monthFormatter = new Intl.DateTimeFormat('pl-PL', { month: 'short' })
+  const weekdayFormatter = new Intl.DateTimeFormat('pl-PL', { weekday: 'short' })
+  const fullFormatter = new Intl.DateTimeFormat('pl-PL', {
+    day: 'numeric',
+    month: 'long',
+    weekday: 'long',
+  })
+
+  const options: DateOption[] = []
+  let daysAhead = 1
+
+  while (options.length < 8 && daysAhead < 40) {
+    const date = new Date()
+    date.setHours(12, 0, 0, 0)
+    date.setDate(date.getDate() + daysAhead)
+    daysAhead += 1
+
+    const weekday = date.getDay()
+    if (weekday < 1 || weekday > 4) {
+      continue
+    }
+
+    options.push({
+      day: dayFormatter.format(date),
+      fullLabel: fullFormatter.format(date),
+      month: monthFormatter.format(date).replace('.', ''),
+      value: toDateValue(date),
+      weekday: weekdayFormatter.format(date).replace('.', ''),
+    })
+  }
+
+  return options
+}
+
+function toDateValue(date: Date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+
+  return `${year}-${month}-${day}`
+}
+
+function getTimeZoneOffset(date: Date, timeZone: string) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    day: '2-digit',
+    hour: '2-digit',
+    hourCycle: 'h23',
+    minute: '2-digit',
+    month: '2-digit',
+    second: '2-digit',
+    timeZone,
+    year: 'numeric',
+  }).formatToParts(date)
+  const values = Object.fromEntries(
+    parts.filter((part) => part.type !== 'literal').map((part) => [part.type, Number(part.value)]),
+  )
+  const zonedTime = Date.UTC(values.year, values.month - 1, values.day, values.hour, values.minute, values.second)
+
+  return zonedTime - date.getTime()
+}
+
+function toCalSlotValue(dateValue: string, timeValue: string) {
+  const [year, month, day] = dateValue.split('-').map(Number)
+  const [hour, minute] = timeValue.split(':').map(Number)
+  const utcGuess = Date.UTC(year, month - 1, day, hour, minute, 0)
+  const offset = getTimeZoneOffset(new Date(utcGuess), TIME_ZONE)
+
+  return new Date(utcGuess - offset).toISOString()
 }

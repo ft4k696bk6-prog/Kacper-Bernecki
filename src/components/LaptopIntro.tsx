@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { MutableRefObject } from 'react'
 import { profile } from '../data/portfolio'
 import { MacDesktop } from './MacDesktop'
 
 const INTRO_VIDEO_URL = '/videos/macbook-work-scene.mp4'
+const REVERSE_VIDEO_URL = '/videos/macbook-work-scene-reverse-off.mp4'
 const AVATAR_URL = '/images/github-avatar.png'
-const REVERSE_SPEED = 1.35
-const CANVAS_WIDTH = 1280
+const WALLPAPER_URL = '/images/macbook-wallpaper.png'
+const ANALYSIS_WIDTH = 1280
 const MIN_LOADER_TIME = 450
 const SCREEN_TRACK_POINTS = [
   { time: 3.78, top: 38.15, left: 38.2, width: 22.6, height: 28.15 },
@@ -17,27 +17,28 @@ const SCREEN_TRACK_POINTS = [
 ]
 
 type ScenePhase = 'loading' | 'intro' | 'locked' | 'desktop' | 'reversing'
-type ScreenMode = 'hidden' | 'lock' | 'desktop'
-type ReplacementMode = 'lock' | 'off'
+type ScreenMode = 'hidden' | 'lock' | 'desktop' | 'off'
 type ScreenTrackPoint = (typeof SCREEN_TRACK_POINTS)[number]
 type ScreenBounds = { minX: number; minY: number; maxX: number; maxY: number }
 type ScreenSpan = { y: number; minX: number; maxX: number }
-type ScreenMask = { bounds: ScreenBounds; spans: ScreenSpan[]; clipPath: string }
+type ScreenMask = {
+  bounds: ScreenBounds
+  coverClipPath: string
+  uiClipPath: string
+}
 
 export function LaptopIntro() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const screenRef = useRef<HTMLDivElement>(null)
-  const avatarRef = useRef<HTMLImageElement | null>(null)
-  const replacementCanvasRef = useRef<HTMLCanvasElement | null>(null)
   const lastMaskRef = useRef<ScreenMask | null>(null)
-  const renderFrameRef = useRef<number | null>(null)
-  const reverseFrameRef = useRef<number | null>(null)
+  const frameRef = useRef<number | null>(null)
+  const sourceRef = useRef(INTRO_VIDEO_URL)
   const phaseRef = useRef<ScenePhase>('loading')
   const screenModeRef = useRef<ScreenMode>('hidden')
-  const replacementModeRef = useRef<ReplacementMode>('lock')
   const [phase, setPhase] = useState<ScenePhase>('loading')
   const [screenMode, setScreenMode] = useState<ScreenMode>('hidden')
+  const [videoSource, setVideoSource] = useState(INTRO_VIDEO_URL)
 
   const setPhaseState = useCallback((nextPhase: ScenePhase) => {
     phaseRef.current = nextPhase
@@ -64,16 +65,19 @@ export function LaptopIntro() {
     screen.style.setProperty('--screen-left', `${track.left}vw`)
     screen.style.setProperty('--screen-width', `${track.width}vw`)
     screen.style.setProperty('--screen-height', `${track.height}vh`)
+    screen.style.setProperty('--screen-clip', 'inset(0)')
+    screen.style.setProperty('--screen-ui-clip', 'inset(3% 2.5% 4% 2.5%)')
   }, [])
 
   const syncScreenToMask = useCallback((mask: ScreenMask | null) => {
     const screen = screenRef.current
+    const video = videoRef.current
     const canvas = canvasRef.current
-    if (!screen || !canvas || !mask) {
+    if (!screen || !video || !canvas || !mask) {
       return false
     }
 
-    const frame = getCanvasCoverFrame(canvas)
+    const frame = getMediaCoverFrame(video, canvas.width, canvas.height)
     if (!frame) {
       return false
     }
@@ -88,7 +92,8 @@ export function LaptopIntro() {
     screen.style.setProperty('--screen-left', `${left}px`)
     screen.style.setProperty('--screen-width', `${width}px`)
     screen.style.setProperty('--screen-height', `${height}px`)
-    screen.style.setProperty('--screen-clip', mask.clipPath)
+    screen.style.setProperty('--screen-clip', mask.coverClipPath)
+    screen.style.setProperty('--screen-ui-clip', mask.uiClipPath)
     return true
   }, [])
 
@@ -101,14 +106,14 @@ export function LaptopIntro() {
     syncScreenToVideo(video?.duration || SCREEN_TRACK_POINTS[SCREEN_TRACK_POINTS.length - 1].time)
   }, [syncScreenToMask, syncScreenToVideo])
 
-  const renderScene = useCallback(() => {
+  const analyzeScene = useCallback(() => {
     const video = videoRef.current
     const canvas = canvasRef.current
     if (!video || !canvas || !video.videoWidth || !video.videoHeight) {
       return null
     }
 
-    const width = CANVAS_WIDTH
+    const width = ANALYSIS_WIDTH
     const height = Math.round((width * video.videoHeight) / video.videoWidth)
     if (canvas.width !== width || canvas.height !== height) {
       canvas.width = width
@@ -121,7 +126,6 @@ export function LaptopIntro() {
     }
 
     context.drawImage(video, 0, 0, width, height)
-
     const frame = context.getImageData(0, 0, width, height)
     const mask = findScreenMask(frame.data, width, height)
     if (!mask) {
@@ -129,56 +133,59 @@ export function LaptopIntro() {
     }
 
     lastMaskRef.current = mask
-    const replacement = getReplacementCanvas(
-      replacementCanvasRef,
-      mask.bounds.maxX - mask.bounds.minX + 1,
-      mask.bounds.maxY - mask.bounds.minY + 1,
-      replacementModeRef.current,
-      avatarRef.current,
-    )
-    const replacementContext = replacement.getContext('2d')
-    if (!replacementContext) {
-      return mask
+    syncScreenToMask(mask)
+
+    if (phaseRef.current === 'intro' && screenModeRef.current === 'hidden') {
+      setScreenModeState('lock')
     }
 
-    const replacementFrame = replacementContext.getImageData(0, 0, replacement.width, replacement.height)
-    replaceGreenScreen(frame.data, replacementFrame.data, width, mask, replacement.width)
-    context.putImageData(frame, 0, 0)
     return mask
-  }, [])
+  }, [setScreenModeState, syncScreenToMask])
 
-  const stopRenderLoop = useCallback(() => {
-    if (renderFrameRef.current !== null) {
-      window.cancelAnimationFrame(renderFrameRef.current)
-      renderFrameRef.current = null
+  const stopFrameLoop = useCallback(() => {
+    if (frameRef.current !== null) {
+      window.cancelAnimationFrame(frameRef.current)
+      frameRef.current = null
     }
   }, [])
 
-  const stopReverse = useCallback(() => {
-    if (reverseFrameRef.current !== null) {
-      window.cancelAnimationFrame(reverseFrameRef.current)
-      reverseFrameRef.current = null
-    }
-  }, [])
-
-  const startRenderLoop = useCallback(() => {
-    if (renderFrameRef.current !== null) {
+  const startFrameLoop = useCallback(() => {
+    if (frameRef.current !== null) {
       return
     }
 
     function tick() {
-      renderScene()
+      analyzeScene()
 
       if (phaseRef.current === 'intro' || phaseRef.current === 'reversing') {
-        renderFrameRef.current = window.requestAnimationFrame(tick)
+        frameRef.current = window.requestAnimationFrame(tick)
         return
       }
 
-      renderFrameRef.current = null
+      frameRef.current = null
     }
 
-    renderFrameRef.current = window.requestAnimationFrame(tick)
-  }, [renderScene])
+    frameRef.current = window.requestAnimationFrame(tick)
+  }, [analyzeScene])
+
+  const setPlaybackSource = useCallback(
+    async (source: string) => {
+      const video = videoRef.current
+      if (!video) {
+        return
+      }
+
+      if (sourceRef.current !== source) {
+        sourceRef.current = source
+        setVideoSource(source)
+        video.src = source
+        video.load()
+      }
+
+      await waitForVideoFrame(video)
+    },
+    [],
+  )
 
   const playForward = useCallback(async () => {
     const video = videoRef.current
@@ -186,27 +193,25 @@ export function LaptopIntro() {
       return
     }
 
-    stopReverse()
-    stopRenderLoop()
-    replacementModeRef.current = 'lock'
+    stopFrameLoop()
     setPhaseState('intro')
     setScreenModeState('hidden')
+    await setPlaybackSource(INTRO_VIDEO_URL)
     video.pause()
     video.playbackRate = 1
     video.currentTime = 0
-    renderScene()
+    analyzeScene()
 
     try {
       await video.play()
-      startRenderLoop()
+      startFrameLoop()
     } catch {
-      // Muted autoplay should work; if it does not, the next user tap starts it.
+      // Muted autoplay should start the cinematic scene; a user tap retries when the browser blocks it.
     }
-  }, [renderScene, setPhaseState, setScreenModeState, startRenderLoop, stopRenderLoop, stopReverse])
+  }, [analyzeScene, setPhaseState, setPlaybackSource, setScreenModeState, startFrameLoop, stopFrameLoop])
 
   const openDesktop = useCallback(() => {
-    const video = videoRef.current
-    if (!video || phaseRef.current !== 'locked') {
+    if (phaseRef.current !== 'locked') {
       return
     }
 
@@ -215,93 +220,101 @@ export function LaptopIntro() {
     setScreenModeState('desktop')
   }, [setPhaseState, setScreenModeState, syncScreenToLatestMask])
 
-  const reverseToStart = useCallback(() => {
+  const resetAfterReverse = useCallback(async () => {
+    const video = videoRef.current
+    stopFrameLoop()
+    setScreenModeState('hidden')
+    setPhaseState('intro')
+    lastMaskRef.current = null
+
+    if (!video) {
+      return
+    }
+
+    await setPlaybackSource(INTRO_VIDEO_URL)
+    video.pause()
+    video.currentTime = 0
+    syncScreenToVideo(0)
+  }, [setPhaseState, setPlaybackSource, setScreenModeState, stopFrameLoop, syncScreenToVideo])
+
+  const reverseToStart = useCallback(async () => {
     const video = videoRef.current
     if (!video || phaseRef.current !== 'desktop') {
       return
     }
 
-    stopReverse()
-    stopRenderLoop()
-    replacementModeRef.current = 'off'
+    stopFrameLoop()
     setPhaseState('reversing')
-    setScreenModeState('hidden')
+    setScreenModeState('off')
+    await setPlaybackSource(REVERSE_VIDEO_URL)
     video.pause()
+    video.playbackRate = 1
+    video.currentTime = 0
+    setScreenModeState('hidden')
 
-    const startTime = Math.min(video.currentTime || video.duration, Math.max(video.duration - 0.04, 0))
-    video.currentTime = startTime
-    renderScene()
-    startRenderLoop()
-
-    let previousFrame = performance.now()
-
-    function step(now: number) {
-      const currentVideo = videoRef.current
-      if (!currentVideo) {
-        return
-      }
-
-      const delta = (now - previousFrame) / 1000
-      previousFrame = now
-      currentVideo.currentTime = Math.max(0, currentVideo.currentTime - delta * REVERSE_SPEED)
-      renderScene()
-
-      if (currentVideo.currentTime <= 0.02) {
-        currentVideo.currentTime = 0
-        currentVideo.pause()
-        reverseFrameRef.current = null
-        stopRenderLoop()
-        replacementModeRef.current = 'lock'
-        renderScene()
-        setPhaseState('intro')
-        setScreenModeState('hidden')
-        return
-      }
-
-      reverseFrameRef.current = window.requestAnimationFrame(step)
+    try {
+      await video.play()
+    } catch {
+      void resetAfterReverse()
     }
-
-    reverseFrameRef.current = window.requestAnimationFrame(step)
-  }, [renderScene, setPhaseState, setScreenModeState, startRenderLoop, stopRenderLoop, stopReverse])
+  }, [resetAfterReverse, setPhaseState, setPlaybackSource, setScreenModeState, stopFrameLoop])
 
   useEffect(() => {
-    const sceneVideo = videoRef.current
-    if (!sceneVideo) {
-      return
-    }
-    const activeVideo: HTMLVideoElement = sceneVideo
+      const sceneVideo = videoRef.current
+      if (!sceneVideo) {
+        return
+      }
+      const activeVideo: HTMLVideoElement = sceneVideo
 
     let cancelled = false
 
     async function loadScene() {
       const avatar = new Image()
+      const wallpaper = new Image()
+      const reverseVideo = document.createElement('video')
       avatar.decoding = 'async'
+      wallpaper.decoding = 'async'
       avatar.src = AVATAR_URL
+      wallpaper.src = WALLPAPER_URL
+      reverseVideo.muted = true
+      reverseVideo.playsInline = true
+      reverseVideo.preload = 'auto'
+      reverseVideo.src = REVERSE_VIDEO_URL
 
-      await Promise.all([waitForVideoFrame(activeVideo), waitForImage(avatar), wait(MIN_LOADER_TIME)])
+      await Promise.all([
+        waitForVideoFrame(activeVideo),
+        waitForVideoFrame(reverseVideo),
+        waitForImage(avatar),
+        waitForImage(wallpaper),
+        wait(MIN_LOADER_TIME),
+      ])
 
       if (cancelled) {
         return
       }
 
-      avatarRef.current = avatar
-      renderScene()
+      analyzeScene()
       void playForward()
     }
 
     function handleEnded() {
+      if (phaseRef.current === 'reversing') {
+        void resetAfterReverse()
+        return
+      }
+
       activeVideo.pause()
       if (Number.isFinite(activeVideo.duration)) {
         activeVideo.currentTime = Math.max(activeVideo.duration - 0.04, 0)
       }
-      replacementModeRef.current = 'lock'
-      const mask = renderScene()
+
+      const mask = analyzeScene()
       if (!syncScreenToMask(mask)) {
         syncScreenToVideo(activeVideo.duration || SCREEN_TRACK_POINTS[SCREEN_TRACK_POINTS.length - 1].time)
       }
       setPhaseState('locked')
       setScreenModeState('lock')
-      stopRenderLoop()
+      stopFrameLoop()
     }
 
     activeVideo.addEventListener('ended', handleEnded)
@@ -310,16 +323,15 @@ export function LaptopIntro() {
     return () => {
       cancelled = true
       activeVideo.removeEventListener('ended', handleEnded)
-      stopReverse()
-      stopRenderLoop()
+      stopFrameLoop()
     }
   }, [
+    analyzeScene,
     playForward,
-    renderScene,
+    resetAfterReverse,
     setPhaseState,
     setScreenModeState,
-    stopRenderLoop,
-    stopReverse,
+    stopFrameLoop,
     syncScreenToMask,
     syncScreenToVideo,
   ])
@@ -345,6 +357,7 @@ export function LaptopIntro() {
   }
 
   const screenIsActive = screenMode !== 'hidden'
+  const showOpen = screenMode === 'lock' && phase === 'locked'
 
   return (
     <section
@@ -353,8 +366,8 @@ export function LaptopIntro() {
     >
       <div className="video-stage" onPointerDown={handleScenePointerDown} aria-hidden="true">
         <div className="video-layer">
+          <video ref={videoRef} src={videoSource} muted playsInline preload="auto" />
           <canvas ref={canvasRef} />
-          <video ref={videoRef} src={INTRO_VIDEO_URL} muted playsInline preload="auto" />
         </div>
       </div>
 
@@ -371,12 +384,20 @@ export function LaptopIntro() {
         aria-hidden={!screenIsActive}
       >
         {screenMode === 'lock' ? (
-          <button type="button" className="lock-open-button" onClick={openDesktop}>
-            Open
-          </button>
+          <div className="screen-content lock-screen-content">
+            <img src={AVATAR_URL} alt="" />
+            <strong>{profile.name}</strong>
+            <span>Portfolio</span>
+            {showOpen ? (
+              <button type="button" className="lock-open-button" onClick={openDesktop}>
+                Open
+              </button>
+            ) : null}
+          </div>
         ) : null}
+        {screenMode === 'off' ? <div className="screen-content off-screen-content" /> : null}
         {screenMode === 'desktop' ? (
-          <div className="mac-desktop-layer" aria-hidden={false}>
+          <div className="screen-content mac-desktop-layer" aria-hidden={false}>
             <MacDesktop onShutdown={reverseToStart} />
           </div>
         ) : null}
@@ -512,46 +533,25 @@ function findScreenMask(data: Uint8ClampedArray, width: number, height: number):
     return null
   }
 
-  const spans = normalizeScreenSpans(bestComponent.spans, bestComponent.bounds, width, height)
-  const bounds = getBoundsFromSpans(spans)
-  if (!bounds) {
+  const coverSpans = normalizeScreenSpans(bestComponent.spans, bestComponent.bounds, width, height)
+  const coverBounds = getBoundsFromSpans(coverSpans)
+  if (!coverBounds) {
     return null
   }
 
+  const safeInset = clamp(Math.round((coverBounds.maxX - coverBounds.minX) * 0.018), 4, 14)
+  const uiSpans = coverSpans
+    .map((span) => ({
+      y: span.y,
+      minX: span.minX + safeInset,
+      maxX: span.maxX - safeInset,
+    }))
+    .filter((span) => span.maxX > span.minX)
+
   return {
-    bounds,
-    spans,
-    clipPath: getScreenClipPath(spans, bounds),
-  }
-}
-
-function replaceGreenScreen(
-  data: Uint8ClampedArray,
-  replacement: Uint8ClampedArray,
-  width: number,
-  mask: ScreenMask,
-  replacementWidth: number,
-) {
-  const { bounds, spans } = mask
-  const replacementHeight = bounds.maxY - bounds.minY + 1
-
-  for (const span of spans) {
-    const rowWidth = Math.max(span.maxX - span.minX, 1)
-    const replacementY = clamp(
-      Math.round(((span.y - bounds.minY) / Math.max(replacementHeight - 1, 1)) * (replacementHeight - 1)),
-      0,
-      replacementHeight - 1,
-    )
-
-    for (let x = span.minX; x <= span.maxX; x += 1) {
-      const index = (span.y * width + x) * 4
-      const replacementX = clamp(Math.round(((x - span.minX) / rowWidth) * (replacementWidth - 1)), 0, replacementWidth - 1)
-      const replacementIndex = (replacementY * replacementWidth + replacementX) * 4
-      data[index] = replacement[replacementIndex]
-      data[index + 1] = replacement[replacementIndex + 1]
-      data[index + 2] = replacement[replacementIndex + 2]
-      data[index + 3] = 255
-    }
+    bounds: coverBounds,
+    coverClipPath: 'inset(0)',
+    uiClipPath: getScreenClipPath(uiSpans, coverBounds),
   }
 }
 
@@ -673,15 +673,15 @@ function getAverageSpan(spans: ScreenSpan[]) {
   }
 }
 
-function getCanvasCoverFrame(canvas: HTMLCanvasElement) {
-  const rect = canvas.getBoundingClientRect()
-  if (!canvas.width || !canvas.height || !rect.width || !rect.height) {
+function getMediaCoverFrame(element: HTMLElement, sourceWidth: number, sourceHeight: number) {
+  const rect = element.getBoundingClientRect()
+  if (!sourceWidth || !sourceHeight || !rect.width || !rect.height) {
     return null
   }
 
-  const scale = Math.max(rect.width / canvas.width, rect.height / canvas.height)
-  const renderedWidth = canvas.width * scale
-  const renderedHeight = canvas.height * scale
+  const scale = Math.max(rect.width / sourceWidth, rect.height / sourceHeight)
+  const renderedWidth = sourceWidth * scale
+  const renderedHeight = sourceHeight * scale
 
   return {
     left: rect.left + (rect.width - renderedWidth) / 2,
@@ -696,140 +696,6 @@ function formatPercent(value: number) {
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max)
-}
-
-function getReplacementCanvas(
-  ref: MutableRefObject<HTMLCanvasElement | null>,
-  width: number,
-  height: number,
-  mode: ReplacementMode,
-  avatar: HTMLImageElement | null,
-) {
-  if (!ref.current) {
-    ref.current = document.createElement('canvas')
-  }
-
-  const canvas = ref.current
-  if (canvas.width !== width || canvas.height !== height) {
-    canvas.width = width
-    canvas.height = height
-  }
-
-  const context = canvas.getContext('2d', { willReadFrequently: true })
-  if (!context) {
-    return canvas
-  }
-
-  drawReplacementScreen(context, width, height, mode, avatar)
-  return canvas
-}
-
-function drawReplacementScreen(
-  context: CanvasRenderingContext2D,
-  width: number,
-  height: number,
-  mode: ReplacementMode,
-  avatar: HTMLImageElement | null,
-) {
-  context.clearRect(0, 0, width, height)
-
-  const wallpaper = context.createLinearGradient(0, 0, width, height)
-  if (mode === 'off') {
-    wallpaper.addColorStop(0, '#020202')
-    wallpaper.addColorStop(0.62, '#050505')
-    wallpaper.addColorStop(1, '#000000')
-    context.fillStyle = wallpaper
-    context.fillRect(0, 0, width, height)
-    return
-  }
-
-  wallpaper.addColorStop(0, '#030405')
-  wallpaper.addColorStop(0.48, '#101114')
-  wallpaper.addColorStop(1, '#030303')
-  context.fillStyle = wallpaper
-  context.fillRect(0, 0, width, height)
-  drawScreenNotch(context, width, height)
-
-  const glow = context.createRadialGradient(width * 0.46, height * 0.32, 0, width * 0.46, height * 0.32, width * 0.52)
-  glow.addColorStop(0, 'rgba(96, 108, 124, 0.2)')
-  glow.addColorStop(0.45, 'rgba(24, 28, 31, 0.14)')
-  glow.addColorStop(1, 'rgba(0, 0, 0, 0)')
-  context.fillStyle = glow
-  context.fillRect(0, 0, width, height)
-
-  const avatarSize = Math.max(30, Math.min(width, height) * 0.18)
-  const centerX = width / 2
-  const avatarY = height * 0.33
-  const textY = avatarY + avatarSize * 0.85
-
-  drawAvatar(context, avatar, centerX, avatarY, avatarSize)
-
-  context.fillStyle = '#f6f7f2'
-  context.textAlign = 'center'
-  context.textBaseline = 'middle'
-  context.font = `700 ${Math.max(13, height * 0.05)}px Inter, Arial, sans-serif`
-  context.fillText(profile.name, centerX, textY)
-
-  context.fillStyle = 'rgba(246, 247, 242, 0.66)'
-  context.font = `500 ${Math.max(10, height * 0.035)}px Inter, Arial, sans-serif`
-  context.fillText('Portfolio', centerX, textY + height * 0.07)
-
-}
-
-function drawAvatar(
-  context: CanvasRenderingContext2D,
-  avatar: HTMLImageElement | null,
-  centerX: number,
-  centerY: number,
-  size: number,
-) {
-  context.save()
-  context.beginPath()
-  context.arc(centerX, centerY, size / 2, 0, Math.PI * 2)
-  context.clip()
-
-  if (avatar?.complete && avatar.naturalWidth > 0) {
-    context.drawImage(avatar, centerX - size / 2, centerY - size / 2, size, size)
-  } else {
-    const fallback = context.createLinearGradient(centerX - size / 2, centerY - size / 2, centerX + size / 2, centerY + size / 2)
-    fallback.addColorStop(0, '#3a4149')
-    fallback.addColorStop(1, '#080808')
-    context.fillStyle = fallback
-    context.fillRect(centerX - size / 2, centerY - size / 2, size, size)
-    context.fillStyle = '#ffffff'
-    context.font = `800 ${size * 0.34}px Inter, Arial, sans-serif`
-    context.textAlign = 'center'
-    context.textBaseline = 'middle'
-    context.fillText('KB', centerX, centerY)
-  }
-
-  context.restore()
-  context.strokeStyle = 'rgba(255, 255, 255, 0.22)'
-  context.lineWidth = Math.max(1, size * 0.025)
-  context.beginPath()
-  context.arc(centerX, centerY, size / 2, 0, Math.PI * 2)
-  context.stroke()
-}
-
-function drawScreenNotch(context: CanvasRenderingContext2D, width: number, height: number) {
-  const notchWidth = width * 0.16
-  const notchHeight = Math.max(7, height * 0.045)
-  const x = width / 2 - notchWidth / 2
-  const y = -notchHeight * 0.18
-
-  context.fillStyle = '#020202'
-  roundRect(context, x, y, notchWidth, notchHeight, notchHeight * 0.36)
-  context.fill()
-}
-
-function roundRect(context: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) {
-  context.beginPath()
-  context.moveTo(x + radius, y)
-  context.arcTo(x + width, y, x + width, y + height, radius)
-  context.arcTo(x + width, y + height, x, y + height, radius)
-  context.arcTo(x, y + height, x, y, radius)
-  context.arcTo(x, y, x + width, y, radius)
-  context.closePath()
 }
 
 function getScreenTrack(time: number): ScreenTrackPoint {

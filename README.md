@@ -1,15 +1,16 @@
 # Kacper-Bernecki
 
-Interactive 3D MacBook portfolio built with React, Vite, TypeScript, Three.js, GSAP, and Canvas.
+Interactive cinematic MacBook portfolio built with React, Vite, TypeScript, Canvas analysis, and a native MP4 intro.
 
 Live site: https://kacper-bernecki.vercel.app  
 GitHub: https://github.com/ft4k696bk6-prog/Kacper-Bernecki
 
 ## Experience
 
-- GLB-based table scene with a right-profile MacBook Pro M3 rendered in Three.js.
-- Smooth camera orbit around the table, laptop-opening animation, and final zoom into the screen.
-- Interactive desktop with draggable-style app windows, dock shortcuts, external links, and mobile-friendly click targets.
+- Native MP4 intro with a MacBook opening on a minimalist desk.
+- Green-screen detection that anchors login and desktop UI to the laptop screen.
+- Smooth shutdown using a local reverse video with the laptop screen turned off.
+- Interactive Mac-style desktop with dock shortcuts, external links, and mobile-friendly focus windows.
 - Functional portfolio sections for projects, about, skills, contact, booking, and games.
 
 ## Functional Links
@@ -24,15 +25,17 @@ GitHub: https://github.com/ft4k696bk6-prog/Kacper-Bernecki
 ## Desktop Apps
 
 - Projects folder with live and repository links.
-- Games folder with Snake, Pong, Breakout, and Berni Rush.
+- Games folder with Berni Rush embedded in the laptop plus Neon Runner, Snake, Pong, and Breakout.
 - Terminal with real commands that update the UI or open the correct destination.
-- About, Skills, Contact, Calendar, GitHub, LinkedIn, and Static Portfolio icons.
+- Calendar panel with date/time selection before confirming through Cal.com.
+- About, Projects, Contact, Calendar, GitHub, LinkedIn, Static Portfolio, Email, Phone, and Power icons.
 
-## 3D Assets
+## Media Assets
 
-- MacBook model: `public/models/macbook-pro-m3.glb`
-- Wooden desk/chair model: `public/models/wooden-desk.glb`
-- The intro uses `GLTFLoader`, then animates the MacBook lid with GSAP around a runtime hinge pivot.
+- Intro video: `public/videos/macbook-work-scene.mp4`
+- Shutdown video: `public/videos/macbook-work-scene-reverse-off.mp4`
+- MacBook wallpaper: `public/images/macbook-wallpaper.png`
+- GitHub avatar: `public/images/github-avatar.png`
 
 ## Terminal Commands
 
@@ -49,6 +52,7 @@ open calendar
 play snake
 play pong
 play breakout
+play neon runner
 berni rush
 clear
 ```

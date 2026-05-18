@@ -32,15 +32,14 @@
   transition-duration: 0.55s;
 }
 
-.video-layer canvas {
+.video-layer video {
   display: block;
   width: 100%;
   height: 100%;
-  filter: saturate(0.82) contrast(1.04) brightness(0.98);
   object-fit: cover;
 }
 
-.video-layer video {
+.video-layer canvas {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -115,7 +114,16 @@
 }
 
 .video-screen-ui.screen-lock {
-  overflow: visible;
+  overflow: hidden;
+  background: #030405;
+  clip-path: var(--screen-clip, inset(0));
+  pointer-events: none;
+}
+
+.video-screen-ui.screen-off {
+  overflow: hidden;
+  background: #000;
+  clip-path: var(--screen-clip, inset(0));
   pointer-events: none;
 }
 
@@ -129,16 +137,69 @@
   pointer-events: auto;
 }
 
+.screen-content,
 .mac-desktop-layer {
   position: absolute;
   inset: 0;
+  overflow: hidden;
+  clip-path: var(--screen-ui-clip, inset(0));
+}
+
+.lock-screen-content {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: clamp(7px, 1vw, 12px);
+  text-align: center;
+  background:
+    radial-gradient(circle at 58% 44%, rgba(214, 173, 93, 0.22), transparent 33%),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.76), rgba(0, 0, 0, 0.18) 47%, rgba(0, 0, 0, 0.7)),
+    url('/images/macbook-wallpaper.png') 70% center / 220% auto;
+}
+
+.lock-screen-content::before {
+  position: absolute;
+  inset: 0;
+  content: '';
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 28%, rgba(0, 0, 0, 0.16)),
+    radial-gradient(circle at 50% 42%, rgba(255, 255, 255, 0.13), transparent 34%);
+}
+
+.lock-screen-content img,
+.lock-screen-content strong,
+.lock-screen-content span,
+.lock-screen-content button {
+  position: relative;
+}
+
+.lock-screen-content img {
+  width: clamp(34px, 6.4vw, 78px);
+  height: clamp(34px, 6.4vw, 78px);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  object-fit: cover;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.38);
+}
+
+.lock-screen-content strong {
+  color: #f7efe1;
+  font-size: clamp(0.9rem, 1.7vw, 1.35rem);
+  line-height: 1;
+}
+
+.lock-screen-content span {
+  color: rgba(247, 239, 225, 0.68);
+  font-size: clamp(0.62rem, 1vw, 0.82rem);
+}
+
+.off-screen-content {
+  background: radial-gradient(circle at 50% 25%, #080808, #000 64%);
 }
 
 .lock-open-button {
-  position: absolute;
-  top: 72%;
-  left: 50%;
   z-index: 3;
+  margin-top: clamp(8px, 1.4vw, 16px);
   min-width: clamp(70px, 8vw, 104px);
   min-height: clamp(28px, 3.1vw, 38px);
   padding: 0 18px;
@@ -149,7 +210,6 @@
   font-size: clamp(0.72rem, 1vw, 0.92rem);
   font-weight: 800;
   pointer-events: auto;
-  transform: translate(-50%, -50%);
   backdrop-filter: blur(12px);
 }
 
@@ -164,22 +224,22 @@
   height: 100%;
   min-height: 0;
   background:
-    radial-gradient(circle at 18% 16%, rgba(107, 159, 166, 0.22), transparent 32%),
-    radial-gradient(circle at 82% 82%, rgba(213, 178, 112, 0.16), transparent 30%),
-    linear-gradient(145deg, #071014 0%, #0d1717 48%, #070908 100%);
+    radial-gradient(circle at 62% 45%, rgba(214, 173, 93, 0.18), transparent 35%),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.42), rgba(0, 0, 0, 0.08) 48%, rgba(0, 0, 0, 0.38)),
+    url('/images/macbook-wallpaper.png') 70% center / 220% auto;
 }
 
 .laptop-screen-ui .desktop-wallpaper {
   width: 100%;
   height: 100%;
   min-height: 0;
-  padding: 25px 10px 42px;
+  padding: 25px 50px 42px;
   overflow: hidden;
 }
 
 .laptop-screen-ui .menu-bar {
   height: 22px;
-  padding: 0 10px;
+  padding: 0 50px;
   font-size: 0.56rem;
 }
 
@@ -193,6 +253,10 @@
   gap: 9px;
   height: calc(100% - 36px);
   min-height: 0;
+}
+
+.laptop-screen-ui .desktop-layout.is-wallpaper-only {
+  grid-template-columns: minmax(92px, 118px) 1fr;
 }
 
 .laptop-screen-ui .icon-grid {
@@ -239,6 +303,10 @@
 .laptop-screen-ui .desktop-center {
   min-height: 0;
   padding-top: 3px;
+}
+
+.laptop-screen-ui .desktop-layout.is-wallpaper-only .desktop-center {
+  display: none;
 }
 
 .laptop-screen-ui .app-window {
@@ -377,6 +445,14 @@
   padding: 9px;
 }
 
+.laptop-screen-ui .game-launcher button strong {
+  font-size: 0.58rem;
+}
+
+.laptop-screen-ui .game-launcher button span {
+  font-size: 0.48rem;
+}
+
 .laptop-screen-ui .game-header,
 .laptop-screen-ui .game-meta {
   font-size: 0.58rem;
@@ -401,6 +477,55 @@
   max-height: 132px;
 }
 
+.laptop-screen-ui .berni-frame-shell iframe {
+  min-height: 152px;
+}
+
+.laptop-screen-ui .calendar-widget {
+  gap: 8px;
+}
+
+.laptop-screen-ui .calendar-day-grid,
+.laptop-screen-ui .calendar-time-grid {
+  gap: 6px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.laptop-screen-ui .calendar-day-grid button {
+  min-height: 54px;
+  gap: 2px;
+  padding: 6px;
+}
+
+.laptop-screen-ui .calendar-day-grid button span,
+.laptop-screen-ui .calendar-day-grid button small {
+  font-size: 0.44rem;
+}
+
+.laptop-screen-ui .calendar-day-grid button strong {
+  font-size: 0.92rem;
+}
+
+.laptop-screen-ui .calendar-time-grid button,
+.laptop-screen-ui .calendar-actions button,
+.laptop-screen-ui .calendar-toolbar button {
+  min-height: 28px;
+  font-size: 0.54rem;
+}
+
+.laptop-screen-ui .calendar-summary p {
+  gap: 2px;
+  padding: 8px;
+}
+
+.laptop-screen-ui .calendar-summary span {
+  font-size: 0.48rem;
+}
+
+.laptop-screen-ui .calendar-summary strong {
+  font-size: 0.62rem;
+}
+
 .laptop-screen-ui .game-controls {
   gap: 5px;
 }
@@ -413,7 +538,7 @@
 
 .laptop-screen-ui .dock {
   bottom: 7px;
-  max-width: calc(100% - 20px);
+  max-width: calc(100% - 100px);
   gap: 4px;
   padding: 5px;
   border-radius: 11px;
@@ -434,9 +559,8 @@
 .desktop-shell {
   min-height: 100svh;
   background:
-    radial-gradient(circle at 20% 14%, rgba(107, 159, 166, 0.26), transparent 30%),
-    radial-gradient(circle at 82% 84%, rgba(213, 178, 112, 0.2), transparent 28%),
-    linear-gradient(145deg, #0a0e11 0%, #121817 42%, #0a0b0a 100%);
+    linear-gradient(90deg, rgba(0, 0, 0, 0.38), rgba(0, 0, 0, 0.05) 48%, rgba(0, 0, 0, 0.42)),
+    url('/images/macbook-wallpaper.png') 70% center / cover;
 }
 
 .desktop-wallpaper {
@@ -501,6 +625,10 @@
   min-height: 560px;
 }
 
+.desktop-layout.is-wallpaper-only {
+  grid-template-columns: minmax(96px, 132px) 1fr;
+}
+
 .icon-grid {
   display: grid;
   align-content: start;
@@ -554,6 +682,10 @@
   min-width: 0;
   align-items: start;
   padding-top: clamp(18px, 4svh, 48px);
+}
+
+.desktop-layout.is-wallpaper-only .desktop-center {
+  display: none;
 }
 
 .app-window {
@@ -686,6 +818,13 @@
   background: rgba(255, 255, 255, 0.035);
 }
 
+button.action-card {
+  border-color: rgba(255, 255, 255, 0.09);
+  color: rgba(238, 243, 242, 0.74);
+  font: inherit;
+  text-align: left;
+}
+
 .project-item {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -732,7 +871,9 @@
 .primary-link,
 .game-launcher a,
 .game-launcher button,
-.game-header button {
+.game-header button,
+.calendar-actions button,
+.calendar-toolbar button {
   display: inline-flex;
   min-height: 38px;
   align-items: center;
@@ -749,7 +890,9 @@
 .primary-link:hover,
 .game-launcher a:hover,
 .game-launcher button:hover,
-.game-header button:hover {
+.game-header button:hover,
+.calendar-actions button:hover,
+.calendar-toolbar button:hover {
   border-color: rgba(212, 181, 126, 0.48);
   background: rgba(212, 181, 126, 0.12);
 }
@@ -792,7 +935,7 @@
 
 .game-launcher {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -803,9 +946,25 @@
   padding: 14px;
 }
 
+.game-launcher button strong {
+  color: #f7efe1;
+  font-size: 0.92rem;
+}
+
+.game-launcher button span {
+  color: rgba(238, 243, 242, 0.54);
+  font-size: 0.76rem;
+}
+
 .game-panel {
   display: grid;
+  height: 100%;
+  min-height: 0;
   gap: 12px;
+}
+
+.game-focus-panel {
+  grid-template-rows: auto minmax(0, 1fr);
 }
 
 .game-header,
@@ -890,17 +1049,175 @@
 
 .game-shell {
   display: grid;
+  min-height: 0;
   gap: 10px;
 }
 
 .game-shell canvas {
   display: block;
   width: 100%;
-  max-height: 42svh;
+  max-height: min(42svh, 100%);
   border: 1px solid rgba(127, 255, 204, 0.13);
   border-radius: 6px;
   background: #07100e;
   image-rendering: pixelated;
+}
+
+.berni-frame-shell {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid rgba(127, 255, 204, 0.13);
+  border-radius: 8px;
+  background: #05080b;
+}
+
+.berni-frame-shell iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 320px;
+  border: 0;
+  background: #05080b;
+}
+
+.game-loader {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  background: #05080b;
+  color: #f7efe1;
+}
+
+.game-loader span {
+  width: 28px;
+  height: 28px;
+  border: 2px solid rgba(255, 255, 255, 0.16);
+  border-top-color: rgba(255, 207, 107, 0.92);
+  border-radius: 999px;
+  animation: loader-spin 0.8s linear infinite;
+}
+
+.game-loader strong {
+  font-size: 0.82rem;
+}
+
+.game-fallback-link {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 7px;
+  padding: 8px 10px;
+  color: #f7efe1;
+  background: rgba(0, 0, 0, 0.72);
+  text-decoration: none;
+}
+
+.calendar-widget {
+  display: grid;
+  gap: 18px;
+}
+
+.calendar-day-grid,
+.calendar-time-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.calendar-day-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.calendar-time-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.calendar-day-grid button,
+.calendar-time-grid button {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #f7efe1;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.calendar-day-grid button {
+  display: grid;
+  min-height: 86px;
+  gap: 5px;
+  align-content: center;
+  padding: 12px;
+  text-align: left;
+}
+
+.calendar-day-grid button span,
+.calendar-day-grid button small {
+  color: rgba(238, 243, 242, 0.55);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+}
+
+.calendar-day-grid button strong {
+  font-size: 1.6rem;
+}
+
+.calendar-time-grid button {
+  min-height: 42px;
+}
+
+.calendar-day-grid button:hover,
+.calendar-day-grid button:focus-visible,
+.calendar-time-grid button:hover,
+.calendar-time-grid button:focus-visible {
+  border-color: rgba(212, 181, 126, 0.48);
+  outline: none;
+  background: rgba(212, 181, 126, 0.12);
+}
+
+.calendar-toolbar {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.calendar-summary {
+  display: grid;
+  gap: 10px;
+}
+
+.calendar-summary p {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.calendar-summary span {
+  color: rgba(238, 243, 242, 0.52);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+
+.calendar-summary strong {
+  color: #f7efe1;
+}
+
+.calendar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .game-controls {
@@ -1015,6 +1332,28 @@
 }
 
 @media (max-width: 560px) {
+  .video-layer {
+    top: 50%;
+    left: 50%;
+    right: auto;
+    bottom: auto;
+    width: min(276vw, 1120px);
+    height: auto;
+    aspect-ratio: 2048 / 1012;
+    transform: translate(-50%, -50%);
+    transform-origin: 50% 50%;
+  }
+
+  .intro-scene.is-reversing .video-layer {
+    transform: translate(-50%, -50%);
+  }
+
+  .video-layer video {
+    width: 100%;
+    height: 100%;
+    object-fit: fill;
+  }
+
   .icon-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -1029,15 +1368,11 @@
   }
 
   .laptop-screen-ui .desktop-wallpaper {
-    padding: 22px 7px 38px;
+    padding: 22px 28px 38px;
   }
 
-  .video-screen-ui {
-    top: 15.4vh;
-    left: 0;
-    width: 100vw;
-    height: 51.1vh;
-    border-radius: 0;
+  .laptop-screen-ui .menu-bar {
+    padding: 0 28px;
   }
 
   .laptop-screen-ui .desktop-layout {
@@ -1045,8 +1380,32 @@
     gap: 7px;
   }
 
+  .laptop-screen-ui .desktop-wallpaper:has(.desktop-layout.has-window) {
+    padding: 24px 20px 12px;
+  }
+
+  .laptop-screen-ui .desktop-layout.has-window {
+    height: 100%;
+  }
+
+  .laptop-screen-ui .desktop-layout.has-window .icon-grid,
+  .laptop-screen-ui .desktop-wallpaper:has(.desktop-layout.has-window) .dock {
+    display: none;
+  }
+
+  .laptop-screen-ui .desktop-layout.has-window .desktop-center {
+    height: 100%;
+    padding-top: 0;
+  }
+
+  .laptop-screen-ui .desktop-layout.has-window .app-window {
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+  }
+
   .laptop-screen-ui .icon-grid {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     max-height: 48px;
     overflow: auto;
   }
@@ -1068,5 +1427,10 @@
   .laptop-screen-ui .contact-grid,
   .laptop-screen-ui .game-launcher {
     grid-template-columns: 1fr;
+  }
+
+  .laptop-screen-ui .calendar-day-grid,
+  .laptop-screen-ui .calendar-time-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

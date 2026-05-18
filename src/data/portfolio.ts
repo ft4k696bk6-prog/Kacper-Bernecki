@@ -11,6 +11,7 @@ export const profile = {
   staticPortfolio: 'https://kacper-portfolio.vercel.app',
   calendar: 'https://cal.com/kacper-bernecki/schedule-meeting',
   newPortfolio: 'https://kacper-bernecki.vercel.app',
+  berniRushUrl: 'https://bernirushdemooo.vercel.app',
 }
 
 export const about = [
@@ -97,6 +98,7 @@ export const terminalCommands = [
   'play snake',
   'play pong',
   'play breakout',
+  'play neon runner',
   'berni rush',
   'clear',
 ]
