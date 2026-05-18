@@ -7,25 +7,40 @@ const MOBILE_FORWARD_VIDEO_URL = '/videos/macbook-work-scene-clean-mobile.mp4?v=
 const REVERSE_VIDEO_URL = '/videos/macbook-work-scene-reverse-clean.mp4?v=20260518-clean4'
 const MOBILE_REVERSE_VIDEO_URL = '/videos/macbook-work-scene-reverse-clean-mobile.mp4?v=20260518-clean4'
 const AVATAR_URL = '/images/github-avatar.png'
+const CLOSE_FRAME_URL = '/images/macbook-close-frame-clean.png'
 const SCREEN_WALLPAPER_URL = '/images/macbook-wallpaper-screen.png'
+const DESKTOP_TRANSITION_MS = 1450
+const CLOSE_FRAME_DESKTOP_SCALE = 1.55
+const CLOSE_FRAME_MOBILE_SCALE = 2.22
 const MIN_LOADER_TIME = 450
 const VIDEO_SOURCE_WIDTH = 4096
 const VIDEO_SOURCE_HEIGHT = 2024
+const CLOSE_FRAME_WIDTH = 2944
+const CLOSE_FRAME_HEIGHT = 1440
 const FINAL_SCREEN_RECT = {
   x: 0.316,
   y: 0.16,
   width: 0.348,
   height: 0.5,
 }
+const CLOSE_SCREEN_RECT = {
+  x: 0.2765,
+  y: 0.1625,
+  width: 0.4484,
+  height: 0.5875,
+}
 
-type ScenePhase = 'loading' | 'intro' | 'locked' | 'desktop' | 'reversing'
+type ScenePhase = 'loading' | 'intro' | 'locked' | 'enteringDesktop' | 'desktop' | 'exitingDesktop' | 'reversing'
 type ScreenMode = 'hidden' | 'lock' | 'desktop'
+type MediaFrame = { height: number; left: number; top: number; width: number }
 type VideoSources = { forward: string; reverse: string }
 
 export function LaptopIntro() {
   const forwardVideoRef = useRef<HTMLVideoElement>(null)
   const reverseVideoRef = useRef<HTMLVideoElement>(null)
+  const closeFrameRef = useRef<HTMLImageElement>(null)
   const screenRef = useRef<HTMLDivElement>(null)
+  const transitionTimeoutRef = useRef<number | null>(null)
   const phaseRef = useRef<ScenePhase>('loading')
   const screenModeRef = useRef<ScreenMode>('hidden')
   const [phase, setPhase] = useState<ScenePhase>('loading')
@@ -42,21 +57,23 @@ export function LaptopIntro() {
     setScreenMode(nextMode)
   }, [])
 
-  const syncScreenToVideo = useCallback((video: HTMLVideoElement | null) => {
+  const clearTransitionTimer = useCallback(() => {
+    if (transitionTimeoutRef.current !== null) {
+      window.clearTimeout(transitionTimeoutRef.current)
+      transitionTimeoutRef.current = null
+    }
+  }, [])
+
+  const syncScreenToFrame = useCallback((mediaFrame: MediaFrame | null, screenRect: typeof FINAL_SCREEN_RECT) => {
     const screen = screenRef.current
-    if (!screen || !video) {
+    if (!screen || !mediaFrame) {
       return false
     }
 
-    const mediaFrame = getMediaCoverFrame(video)
-    if (!mediaFrame) {
-      return false
-    }
-
-    const top = mediaFrame.top + FINAL_SCREEN_RECT.y * mediaFrame.height
-    const left = mediaFrame.left + FINAL_SCREEN_RECT.x * mediaFrame.width
-    const width = FINAL_SCREEN_RECT.width * mediaFrame.width
-    const height = FINAL_SCREEN_RECT.height * mediaFrame.height
+    const top = mediaFrame.top + screenRect.y * mediaFrame.height
+    const left = mediaFrame.left + screenRect.x * mediaFrame.width
+    const width = screenRect.width * mediaFrame.width
+    const height = screenRect.height * mediaFrame.height
 
     screen.style.setProperty('--screen-top', `${top}px`)
     screen.style.setProperty('--screen-left', `${left}px`)
@@ -65,10 +82,31 @@ export function LaptopIntro() {
     return true
   }, [])
 
+  const syncScreenToVideo = useCallback(
+    (video: HTMLVideoElement | null) => {
+      if (!video) {
+        return false
+      }
+
+      return syncScreenToFrame(getMediaCoverFrame(video), FINAL_SCREEN_RECT)
+    },
+    [syncScreenToFrame],
+  )
+
+  const syncScreenToCloseFrame = useCallback(() => {
+    const image = closeFrameRef.current
+    if (!image) {
+      return false
+    }
+
+    return syncScreenToFrame(getCloseFrameTargetFrame(image), CLOSE_SCREEN_RECT)
+  }, [syncScreenToFrame])
+
   const resetAfterReverse = useCallback(() => {
     const forwardVideo = forwardVideoRef.current
     const reverseVideo = reverseVideoRef.current
 
+    clearTransitionTimer()
     reverseVideo?.pause()
     if (reverseVideo) {
       reverseVideo.currentTime = 0
@@ -82,7 +120,7 @@ export function LaptopIntro() {
 
     setScreenModeState('hidden')
     setPhaseState('intro')
-  }, [setPhaseState, setScreenModeState, syncScreenToVideo])
+  }, [clearTransitionTimer, setPhaseState, setScreenModeState, syncScreenToVideo])
 
   const playForward = useCallback(async () => {
     const forwardVideo = forwardVideoRef.current
@@ -91,6 +129,7 @@ export function LaptopIntro() {
       return
     }
 
+    clearTransitionTimer()
     reverseVideo?.pause()
     if (reverseVideo) {
       reverseVideo.currentTime = 0
@@ -108,17 +147,27 @@ export function LaptopIntro() {
     } catch {
       // User pointer/tap retries playback when autoplay is blocked.
     }
-  }, [setPhaseState, setScreenModeState, syncScreenToVideo])
+  }, [clearTransitionTimer, setPhaseState, setScreenModeState, syncScreenToVideo])
 
   const openDesktop = useCallback(() => {
     if (phaseRef.current !== 'locked') {
       return
     }
 
+    clearTransitionTimer()
     syncScreenToVideo(forwardVideoRef.current)
     setScreenModeState('desktop')
-    setPhaseState('desktop')
-  }, [setPhaseState, setScreenModeState, syncScreenToVideo])
+    setPhaseState('enteringDesktop')
+
+    window.requestAnimationFrame(() => {
+      syncScreenToCloseFrame()
+      transitionTimeoutRef.current = window.setTimeout(() => {
+        syncScreenToCloseFrame()
+        setPhaseState('desktop')
+        transitionTimeoutRef.current = null
+      }, DESKTOP_TRANSITION_MS)
+    })
+  }, [clearTransitionTimer, setPhaseState, setScreenModeState, syncScreenToCloseFrame, syncScreenToVideo])
 
   const reverseToStart = useCallback(async () => {
     const forwardVideo = forwardVideoRef.current
@@ -127,20 +176,30 @@ export function LaptopIntro() {
       return
     }
 
+    clearTransitionTimer()
     setScreenModeState('hidden')
-    setPhaseState('reversing')
     forwardVideo?.pause()
+    if (forwardVideo && Number.isFinite(forwardVideo.duration)) {
+      forwardVideo.currentTime = Math.max(forwardVideo.duration - 0.04, 0)
+    }
+
     reverseVideo.pause()
     reverseVideo.playbackRate = 1
     reverseVideo.currentTime = 0
+    setPhaseState('exitingDesktop')
 
-    try {
-      await waitForVideoFrame(reverseVideo)
-      await reverseVideo.play()
-    } catch {
-      resetAfterReverse()
-    }
-  }, [resetAfterReverse, setPhaseState, setScreenModeState])
+    transitionTimeoutRef.current = window.setTimeout(async () => {
+      setPhaseState('reversing')
+      transitionTimeoutRef.current = null
+
+      try {
+        await waitForVideoFrame(reverseVideo)
+        await reverseVideo.play()
+      } catch {
+        resetAfterReverse()
+      }
+    }, DESKTOP_TRANSITION_MS)
+  }, [clearTransitionTimer, resetAfterReverse, setPhaseState, setScreenModeState])
 
   useEffect(() => {
     const forwardVideo = forwardVideoRef.current
@@ -155,16 +214,20 @@ export function LaptopIntro() {
 
     async function loadScene() {
       const avatar = new Image()
+      const closeFrame = new Image()
       const screenWallpaper = new Image()
       avatar.decoding = 'async'
+      closeFrame.decoding = 'async'
       screenWallpaper.decoding = 'async'
       avatar.src = AVATAR_URL
+      closeFrame.src = CLOSE_FRAME_URL
       screenWallpaper.src = SCREEN_WALLPAPER_URL
 
       await Promise.all([
         waitForVideoFrame(forwardElement),
         waitForVideoFrame(reverseElement),
         waitForImage(avatar),
+        waitForImage(closeFrame),
         waitForImage(screenWallpaper),
         wait(MIN_LOADER_TIME),
       ])
@@ -204,13 +267,19 @@ export function LaptopIntro() {
 
     return () => {
       cancelled = true
+      clearTransitionTimer()
       forwardElement.removeEventListener('ended', handleForwardEnded)
       reverseElement.removeEventListener('ended', handleReverseEnded)
     }
-  }, [playForward, resetAfterReverse, setPhaseState, setScreenModeState, syncScreenToVideo])
+  }, [clearTransitionTimer, playForward, resetAfterReverse, setPhaseState, setScreenModeState, syncScreenToVideo])
 
   useEffect(() => {
     function handleResize() {
+      if (phaseRef.current === 'desktop' || phaseRef.current === 'enteringDesktop') {
+        syncScreenToCloseFrame()
+        return
+      }
+
       const activeVideo = phaseRef.current === 'reversing' ? reverseVideoRef.current : forwardVideoRef.current
       syncScreenToVideo(activeVideo)
     }
@@ -221,7 +290,7 @@ export function LaptopIntro() {
       window.removeEventListener('resize', handleResize)
       window.visualViewport?.removeEventListener('resize', handleResize)
     }
-  }, [syncScreenToVideo])
+  }, [syncScreenToCloseFrame, syncScreenToVideo])
 
   function handleScenePointerDown() {
     const forwardVideo = forwardVideoRef.current
@@ -258,6 +327,9 @@ export function LaptopIntro() {
             playsInline
             preload="auto"
           />
+        </div>
+        <div className="close-frame-layer">
+          <img ref={closeFrameRef} className="close-frame-image" src={CLOSE_FRAME_URL} alt="" />
         </div>
       </div>
 
@@ -359,4 +431,43 @@ function getMediaCoverFrame(video: HTMLVideoElement) {
     top: rect.top + (rect.height - height) / 2,
     width,
   }
+}
+
+function getImageFrame(image: HTMLImageElement) {
+  const rect = image.getBoundingClientRect()
+  const sourceWidth = image.naturalWidth || CLOSE_FRAME_WIDTH
+  const sourceHeight = image.naturalHeight || CLOSE_FRAME_HEIGHT
+
+  if (!sourceWidth || !sourceHeight || !rect.width || !rect.height) {
+    return null
+  }
+
+  return {
+    height: rect.height,
+    left: rect.left,
+    top: rect.top,
+    width: rect.width,
+  }
+}
+
+function getCloseFrameTargetFrame(image: HTMLImageElement) {
+  const parent = image.parentElement
+  if (!parent) {
+    return getImageFrame(image)
+  }
+
+  const measuringImage = image.cloneNode(false) as HTMLImageElement
+  measuringImage.style.transition = 'none'
+  measuringImage.style.transform = `translate(-50%, -50%) scale(${getCloseFrameTargetScale()})`
+  measuringImage.style.visibility = 'hidden'
+  measuringImage.style.pointerEvents = 'none'
+  parent.appendChild(measuringImage)
+  const frame = getImageFrame(measuringImage)
+  measuringImage.remove()
+
+  return frame
+}
+
+function getCloseFrameTargetScale() {
+  return isMobileViewport() ? CLOSE_FRAME_MOBILE_SCALE : CLOSE_FRAME_DESKTOP_SCALE
 }
