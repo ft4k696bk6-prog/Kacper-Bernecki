@@ -2,17 +2,14 @@
   min-height: 100svh;
   overflow: hidden;
   color: #eef3f2;
-  background: #080b0d;
+  background: #f0ece5;
 }
 
 .intro-scene {
   position: relative;
   min-height: 100svh;
   overflow: hidden;
-  background:
-    radial-gradient(circle at 18% 22%, rgba(49, 86, 98, 0.42), transparent 31%),
-    radial-gradient(circle at 72% 76%, rgba(160, 120, 69, 0.22), transparent 26%),
-    linear-gradient(140deg, #080b0d 0%, #111518 54%, #090908 100%);
+  background: #f0ece5;
 }
 
 .three-stage {

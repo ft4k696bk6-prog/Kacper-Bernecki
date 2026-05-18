@@ -1,19 +1,25 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { gsap } from 'gsap'
 import * as THREE from 'three'
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js'
 import { MacDesktop } from './MacDesktop'
 
-const DESK_URL = '/models/wooden-desk.glb'
 const MACBOOK_URL = '/models/macbook-pro-m3.glb'
+const STUDIO_HDR_URL = '/hdr/studio_small_09_1k.hdr'
+const WOOD_DIFFUSE_URL = '/textures/wood_table/diff.jpg'
+const WOOD_NORMAL_URL = '/textures/wood_table/normal.jpg'
 const MOBILE_BREAKPOINT = 640
-const DESKTOP_FOV = 42
-const MOBILE_FOV = 72
-const DESK_SCALE = 1.05
-const TABLE_SURFACE_Y = 2.405
-const LAPTOP_WORLD_WIDTH = 1.22
+const DESKTOP_FOV = 38
+const MOBILE_FOV = 64
+const TABLE_SURFACE_Y = 1.08
+const LAPTOP_WORLD_WIDTH = 1.28
 const CLOSED_LID_ROTATION = -1.16
 const OPEN_LID_ROTATION = -0.18
+const TABLE_WIDTH = 5.4
+const TABLE_DEPTH = 3.15
+const TABLE_THICKNESS = 0.16
 
 function disposeObject(root: THREE.Object3D) {
   root.traverse((object) => {
@@ -23,7 +29,14 @@ function disposeObject(root: THREE.Object3D) {
 
     object.geometry.dispose()
     const materials = Array.isArray(object.material) ? object.material : [object.material]
-    materials.forEach((material) => material.dispose())
+    materials.forEach((material) => {
+      Object.values(material).forEach((value) => {
+        if (value instanceof THREE.Texture) {
+          value.dispose()
+        }
+      })
+      material.dispose()
+    })
   })
 }
 
@@ -39,7 +52,19 @@ function prepareModel(root: THREE.Object3D) {
     const materials = Array.isArray(object.material) ? object.material : [object.material]
     materials.forEach((material) => {
       if (material instanceof THREE.MeshStandardMaterial) {
-        material.envMapIntensity = 1.15
+        const color = material.color
+        const isSilverBody =
+          material.metalness > 0.7 && color.r > 0.42 && color.g > 0.42 && color.b > 0.42
+
+        if (isSilverBody) {
+          material.color.set('#bfc1bd')
+          material.metalness = 0.78
+          material.roughness = 0.34
+          material.envMapIntensity = 1.55
+        } else {
+          material.roughness = Math.max(material.roughness, 0.42)
+          material.envMapIntensity = 1.05
+        }
         material.needsUpdate = true
       }
     })
@@ -52,6 +77,14 @@ function muteBuiltInDisplay(root: THREE.Object3D) {
       return
     }
 
+    const box = new THREE.Box3().setFromObject(object)
+    const center = new THREE.Vector3()
+    box.getCenter(center)
+    const isDisplayAssembly = center.y > 1.1 && center.z < -8.2
+    if (!isDisplayAssembly) {
+      return
+    }
+
     const materials = Array.isArray(object.material) ? object.material : [object.material]
     materials.forEach((material) => {
       if (!(material instanceof THREE.MeshStandardMaterial)) {
@@ -59,13 +92,29 @@ function muteBuiltInDisplay(root: THREE.Object3D) {
       }
 
       const hasBrightScreenEmissive = material.emissive.getHSL({ h: 0, s: 0, l: 0 }).l > 0.45
-      if (material.name === 'sfCQkHOWyrsLmor' || hasBrightScreenEmissive) {
+      const brightness = (material.color.r + material.color.g + material.color.b) / 3
+      const isScreenGlass = material.name === 'sfCQkHOWyrsLmor' || hasBrightScreenEmissive || brightness < 0.18
+
+      material.map = null
+      material.normalMap = null
+      material.roughnessMap = null
+      material.metalnessMap = null
+      material.emissiveMap = null
+
+      if (isScreenGlass) {
         material.color.set('#020304')
         material.emissive.set('#000000')
         material.emissiveIntensity = 0
-        material.map = null
-        material.needsUpdate = true
+        material.metalness = 0.12
+        material.roughness = 0.08
+        material.envMapIntensity = 1.28
+      } else {
+        material.color.set('#bfc1bd')
+        material.metalness = 0.78
+        material.roughness = 0.31
+        material.envMapIntensity = 1.48
       }
+      material.needsUpdate = true
     })
   })
 }
@@ -102,6 +151,79 @@ function createScreenBootTexture() {
   return texture
 }
 
+function configureTexture(texture: THREE.Texture, repeatX: number, repeatY: number, colorSpace?: THREE.ColorSpace) {
+  texture.wrapS = THREE.RepeatWrapping
+  texture.wrapT = THREE.RepeatWrapping
+  texture.repeat.set(repeatX, repeatY)
+  texture.anisotropy = 8
+  if (colorSpace) {
+    texture.colorSpace = colorSpace
+  }
+}
+
+function createStudioTable(textureLoader: THREE.TextureLoader) {
+  const table = new THREE.Group()
+  table.name = 'Minimal oak studio table'
+
+  const woodDiffuse = textureLoader.load(WOOD_DIFFUSE_URL)
+  const woodNormal = textureLoader.load(WOOD_NORMAL_URL)
+  configureTexture(woodDiffuse, 3.4, 1.8, THREE.SRGBColorSpace)
+  configureTexture(woodNormal, 3.4, 1.8)
+
+  const tabletop = new THREE.Mesh(
+    new RoundedBoxGeometry(TABLE_WIDTH, TABLE_THICKNESS, TABLE_DEPTH, 10, 0.075),
+    new THREE.MeshStandardMaterial({
+      color: '#b89167',
+      map: woodDiffuse,
+      normalMap: woodNormal,
+      normalScale: new THREE.Vector2(0.12, 0.12),
+      roughness: 0.84,
+      metalness: 0,
+    }),
+  )
+  tabletop.position.set(0, TABLE_SURFACE_Y - TABLE_THICKNESS / 2, -0.05)
+  tabletop.castShadow = true
+  tabletop.receiveShadow = true
+  table.add(tabletop)
+
+  const edge = new THREE.Mesh(
+    new RoundedBoxGeometry(TABLE_WIDTH + 0.02, 0.045, TABLE_DEPTH + 0.02, 8, 0.035),
+    new THREE.MeshStandardMaterial({
+      color: '#8f6b45',
+      roughness: 0.68,
+      metalness: 0,
+    }),
+  )
+  edge.position.set(0, TABLE_SURFACE_Y - TABLE_THICKNESS - 0.02, -0.05)
+  edge.castShadow = true
+  edge.receiveShadow = true
+  table.add(edge)
+
+  const legMaterial = new THREE.MeshStandardMaterial({
+    color: '#22211f',
+    metalness: 0.75,
+    roughness: 0.34,
+  })
+  const legGeometry = new THREE.CylinderGeometry(0.032, 0.045, TABLE_SURFACE_Y - TABLE_THICKNESS, 18)
+  const legY = (TABLE_SURFACE_Y - TABLE_THICKNESS) / 2
+  const legPositions = [
+    [-TABLE_WIDTH / 2 + 0.42, legY, -TABLE_DEPTH / 2 + 0.38],
+    [TABLE_WIDTH / 2 - 0.42, legY, -TABLE_DEPTH / 2 + 0.38],
+    [-TABLE_WIDTH / 2 + 0.42, legY, TABLE_DEPTH / 2 - 0.38],
+    [TABLE_WIDTH / 2 - 0.42, legY, TABLE_DEPTH / 2 - 0.38],
+  ]
+
+  legPositions.forEach(([x, y, z]) => {
+    const leg = new THREE.Mesh(legGeometry.clone(), legMaterial.clone())
+    leg.position.set(x, y, z)
+    leg.castShadow = true
+    leg.receiveShadow = true
+    table.add(leg)
+  })
+
+  return table
+}
+
 export function LaptopIntro() {
   const mountRef = useRef<HTMLDivElement>(null)
   const lidPivotRef = useRef<THREE.Group | null>(null)
@@ -111,12 +233,12 @@ export function LaptopIntro() {
   const assetReadyRef = useRef(false)
   const startedRef = useRef(false)
   const orbitRef = useRef({
-    angle: 1.28,
-    radius: 3.9,
-    height: 3.05,
-    targetX: 0.18,
-    targetY: 2.42,
-    targetZ: -0.72,
+    angle: 1.24,
+    radius: 4.35,
+    height: 1.86,
+    targetX: 0.16,
+    targetY: 1.16,
+    targetZ: -0.28,
   })
   const [screenActive, setScreenActive] = useState(false)
   const [started, setStarted] = useState(false)
@@ -153,11 +275,11 @@ export function LaptopIntro() {
       .timeline()
       .to(orbit, {
         angle: 0.08,
-        radius: 2.35,
-        height: 2.95,
+        radius: 2.42,
+        height: 1.76,
         targetX: 0.18,
-        targetY: 2.68,
-        targetZ: -1.18,
+        targetY: 1.45,
+        targetZ: -1.08,
         duration: 3.7,
         ease: 'power3.inOut',
       })
@@ -165,9 +287,9 @@ export function LaptopIntro() {
         orbit,
         {
           angle: 0.035,
-          radius: 1.68,
-          height: 2.86,
-          targetY: 2.72,
+          radius: 1.78,
+          height: 1.58,
+          targetY: 1.47,
           targetZ: -1.28,
           duration: 1,
           ease: 'power2.inOut',
@@ -185,10 +307,12 @@ export function LaptopIntro() {
     const stage = mount
 
     const scene = new THREE.Scene()
-    scene.background = new THREE.Color('#07090b')
+    scene.background = new THREE.Color('#f0ece5')
     const orbitState = orbitRef.current
     const loadedRoots: THREE.Object3D[] = []
     const loader = new GLTFLoader()
+    const textureLoader = new THREE.TextureLoader()
+    const hdrLoader = new HDRLoader()
     const raycaster = new THREE.Raycaster()
     const pointer = new THREE.Vector2()
     const screenCorners = [
@@ -210,8 +334,10 @@ export function LaptopIntro() {
     renderer.shadowMap.type = THREE.PCFShadowMap
     renderer.outputColorSpace = THREE.SRGBColorSpace
     renderer.toneMapping = THREE.ACESFilmicToneMapping
-    renderer.toneMappingExposure = 1.08
+    renderer.toneMappingExposure = 1.22
     stage.appendChild(renderer.domElement)
+    const pmremGenerator = new THREE.PMREMGenerator(renderer)
+    let environmentTexture: THREE.Texture | null = null
 
     const isPortrait = stage.clientWidth < MOBILE_BREAKPOINT
     const camera = new THREE.PerspectiveCamera(
@@ -221,11 +347,11 @@ export function LaptopIntro() {
       100,
     )
 
-    const ambient = new THREE.HemisphereLight('#f4f7fb', '#15100d', 1.42)
+    const ambient = new THREE.HemisphereLight('#fff9ee', '#c9c1b4', 1.18)
     scene.add(ambient)
 
-    const key = new THREE.DirectionalLight('#fff3dc', 3.15)
-    key.position.set(4.4, 6.2, 4.8)
+    const key = new THREE.DirectionalLight('#fff4df', 4.45)
+    key.position.set(3.8, 5.8, 3.4)
     key.castShadow = true
     key.shadow.mapSize.set(2048, 2048)
     key.shadow.camera.left = -6
@@ -234,20 +360,20 @@ export function LaptopIntro() {
     key.shadow.camera.bottom = -6
     scene.add(key)
 
-    const coolRim = new THREE.PointLight('#8fd2ff', 2.25, 10)
-    coolRim.position.set(-4.6, 3.4, -3.3)
+    const coolRim = new THREE.PointLight('#d8ecff', 1.15, 7)
+    coolRim.position.set(-2.9, 2.3, -2.7)
     scene.add(coolRim)
 
-    const warmStrip = new THREE.PointLight('#ffe0b0', 1.65, 8)
-    warmStrip.position.set(2.8, 2.7, 2.9)
+    const warmStrip = new THREE.PointLight('#ffe4ba', 0.92, 6)
+    warmStrip.position.set(2.2, 2.2, 2.6)
     scene.add(warmStrip)
 
     const floor = new THREE.Mesh(
-      new THREE.PlaneGeometry(28, 28),
+      new THREE.PlaneGeometry(16, 16),
       new THREE.MeshStandardMaterial({
-        color: '#080b0d',
-        roughness: 0.78,
-        metalness: 0.05,
+        color: '#e8e0d4',
+        roughness: 0.72,
+        metalness: 0,
       }),
     )
     floor.rotation.x = -Math.PI / 2
@@ -255,61 +381,54 @@ export function LaptopIntro() {
     scene.add(floor)
 
     const backWall = new THREE.Mesh(
-      new THREE.PlaneGeometry(28, 9),
+      new THREE.PlaneGeometry(16, 7),
       new THREE.MeshStandardMaterial({
-        color: '#090d10',
-        roughness: 0.86,
-        metalness: 0.02,
+        color: '#f4eee5',
+        roughness: 0.84,
+        metalness: 0,
       }),
     )
-    backWall.position.set(0, 4.5, -6.4)
+    backWall.position.set(0, 3.5, -4.4)
     backWall.receiveShadow = true
     scene.add(backWall)
 
+    const sideWall = new THREE.Mesh(
+      new THREE.PlaneGeometry(16, 7),
+      new THREE.MeshStandardMaterial({
+        color: '#ebe3d7',
+        roughness: 0.86,
+        metalness: 0,
+      }),
+    )
+    sideWall.rotation.y = Math.PI / 2
+    sideWall.position.set(-5.8, 3.5, 0)
+    sideWall.receiveShadow = true
+    scene.add(sideWall)
+
     const screenTexture = createScreenBootTexture()
+    const table = createStudioTable(textureLoader)
+    scene.add(table)
+    loadedRoots.push(table)
+
+    hdrLoader.load(
+      STUDIO_HDR_URL,
+      (texture) => {
+        if (!running) {
+          texture.dispose()
+          return
+        }
+        environmentTexture = pmremGenerator.fromEquirectangular(texture).texture
+        scene.environment = environmentTexture
+        texture.dispose()
+      },
+      undefined,
+      (error) => console.error('Studio HDR failed to load', error),
+    )
+
     let running = true
     let frame = 0
     let pointerX = 0
     let pointerY = 0
-
-    loader.load(
-      DESK_URL,
-      (gltf) => {
-        if (!running) {
-          disposeObject(gltf.scene)
-          return
-        }
-
-        const desk = gltf.scene
-        prepareModel(desk)
-        desk.name = 'Wooden desk with chairs'
-        const woodLift = new THREE.Color('#7a654d')
-
-        desk.traverse((object) => {
-          if (object.name.toLowerCase().includes('chair')) {
-            object.visible = false
-          }
-
-          if (object instanceof THREE.Mesh) {
-            const materials = Array.isArray(object.material) ? object.material : [object.material]
-            materials.forEach((material) => {
-              if (material instanceof THREE.MeshStandardMaterial) {
-                material.color.lerp(woodLift, 0.18)
-                material.roughness = Math.min(material.roughness + 0.08, 0.95)
-              }
-            })
-          }
-        })
-
-        desk.scale.setScalar(DESK_SCALE)
-        desk.rotation.y = 0.02
-        desk.position.set(0, 0, -0.18)
-        scene.add(desk)
-        loadedRoots.push(desk)
-      },
-      undefined,
-      (error) => console.error('Desk model failed to load', error),
-    )
 
     loader.load(
       MACBOOK_URL,
@@ -369,9 +488,9 @@ export function LaptopIntro() {
         screenPlaneRef.current = screenPlane
 
         macbook.scale.setScalar(modelScale)
-        macbook.rotation.y = -0.08
-        const macbookBaseY = TABLE_SURFACE_Y - rawBox.min.y * modelScale + 0.035
-        macbook.position.set(0.2, macbookBaseY, -0.3)
+        macbook.rotation.y = -0.06
+        const macbookBaseY = TABLE_SURFACE_Y - rawBox.min.y * modelScale + 0.018
+        macbook.position.set(0.22, macbookBaseY, -0.28)
         macbook.userData.baseY = macbookBaseY
         scene.add(macbook)
         loadedRoots.push(macbook)
@@ -386,7 +505,7 @@ export function LaptopIntro() {
     function updateCameraFromOrbit() {
       const current = orbitRef.current
       const isNarrow = window.innerWidth < MOBILE_BREAKPOINT
-      const viewportRadius = current.radius * (isNarrow ? (startedRef.current ? 1 : 1.22) : 1)
+      const viewportRadius = current.radius * (isNarrow ? (startedRef.current ? 1.12 : 1.26) : 1)
       const target = new THREE.Vector3(current.targetX, current.targetY, current.targetZ)
       const lookAmountX = startedRef.current ? 0.055 : 0.16
       const lookAmountY = startedRef.current ? 0.035 : 0.1
@@ -503,6 +622,10 @@ export function LaptopIntro() {
         gsap.killTweensOf(screenMaterialRef.current)
       }
       loadedRoots.forEach(disposeObject)
+      if (environmentTexture) {
+        environmentTexture.dispose()
+      }
+      pmremGenerator.dispose()
       screenTexture.dispose()
       renderer.dispose()
       stage.removeChild(renderer.domElement)
