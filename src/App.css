@@ -32,19 +32,19 @@
   transition-duration: 0.55s;
 }
 
-.video-layer video {
+.scene-video {
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.12s linear;
 }
 
-.video-layer canvas {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  pointer-events: none;
+.scene-video.is-visible {
+  opacity: 1;
 }
 
 .intro-loader {
@@ -117,18 +117,9 @@
   transform: translateZ(0) scale(1);
 }
 
-.video-screen-ui.screen-dark,
 .video-screen-ui.screen-lock {
   overflow: hidden;
   background: #030405;
-  clip-path: var(--screen-clip, inset(0));
-  pointer-events: none;
-}
-
-.video-screen-ui.screen-off {
-  overflow: hidden;
-  background: #000;
-  clip-path: var(--screen-clip, inset(0));
   pointer-events: none;
 }
 
@@ -137,9 +128,22 @@
   background: #020303;
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.12),
-    0 0 34px rgba(101, 255, 218, 0.14);
-  clip-path: var(--screen-clip, inset(0));
+    inset 0 0 44px rgba(0, 0, 0, 0.46),
+    0 0 34px rgba(0, 0, 0, 0.18);
   pointer-events: auto;
+}
+
+.video-screen-ui.screen-desktop::after {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  content: '';
+  background:
+    linear-gradient(108deg, rgba(255, 255, 255, 0.12), transparent 22%, transparent 70%, rgba(255, 255, 255, 0.04)),
+    radial-gradient(circle at 48% 8%, rgba(255, 255, 255, 0.12), transparent 32%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.08), transparent 36%, rgba(0, 0, 0, 0.18));
+  opacity: 0.58;
 }
 
 .screen-content,
@@ -147,16 +151,9 @@
   position: absolute;
   inset: 0;
   overflow: hidden;
-  clip-path: var(--screen-ui-clip, inset(0));
-}
-
-.video-screen-ui.screen-dark .screen-content,
-.video-screen-ui.screen-lock .screen-content,
-.video-screen-ui.screen-off .screen-content {
   clip-path: inset(0);
 }
 
-.dark-screen-content,
 .lock-screen-content {
   display: grid;
   place-content: center;
@@ -168,7 +165,6 @@
     linear-gradient(135deg, #050607, #010202 58%, #070808);
 }
 
-.dark-screen-content::before,
 .lock-screen-content::before {
   position: absolute;
   inset: 0;
@@ -205,10 +201,6 @@
   font-size: clamp(0.62rem, 1vw, 0.82rem);
 }
 
-.off-screen-content {
-  background: radial-gradient(circle at 50% 25%, #080808, #000 64%);
-}
-
 .lock-open-button {
   z-index: 3;
   margin-top: clamp(8px, 1.4vw, 16px);
@@ -238,7 +230,8 @@
   background:
     radial-gradient(circle at 62% 45%, rgba(214, 173, 93, 0.18), transparent 35%),
     linear-gradient(90deg, rgba(0, 0, 0, 0.42), rgba(0, 0, 0, 0.08) 48%, rgba(0, 0, 0, 0.38)),
-    url('/images/macbook-wallpaper.png') 70% center / 220% auto;
+    url('/images/macbook-wallpaper-screen.png') center / cover;
+  filter: saturate(0.9) brightness(0.88) contrast(1.04);
 }
 
 .laptop-screen-ui .desktop-wallpaper {
@@ -1349,7 +1342,7 @@ button.action-card {
     left: 50%;
     right: auto;
     bottom: auto;
-    width: min(276vw, 1120px);
+    width: min(295vw, 1220px);
     height: auto;
     aspect-ratio: 2048 / 1012;
     transform: translate(-50%, -50%);
@@ -1360,7 +1353,7 @@ button.action-card {
     transform: translate(-50%, -50%);
   }
 
-  .video-layer video {
+  .scene-video {
     width: 100%;
     height: 100%;
     object-fit: fill;

@@ -1,57 +1,36 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { profile } from '../data/portfolio'
 import { MacDesktop } from './MacDesktop'
 
-const INTRO_VIDEO_URL = '/videos/macbook-work-scene.mp4'
-const MOBILE_INTRO_VIDEO_URL = '/videos/macbook-work-scene-mobile.mp4'
-const REVERSE_VIDEO_URL = '/videos/macbook-work-scene-reverse-off.mp4'
-const MOBILE_REVERSE_VIDEO_URL = '/videos/macbook-work-scene-reverse-off-mobile.mp4'
+const FORWARD_VIDEO_URL = '/videos/macbook-work-scene-clean.mp4?v=20260518-clean2'
+const MOBILE_FORWARD_VIDEO_URL = '/videos/macbook-work-scene-clean-mobile.mp4?v=20260518-clean2'
+const REVERSE_VIDEO_URL = '/videos/macbook-work-scene-reverse-clean.mp4?v=20260518-clean2'
+const MOBILE_REVERSE_VIDEO_URL = '/videos/macbook-work-scene-reverse-clean-mobile.mp4?v=20260518-clean2'
 const AVATAR_URL = '/images/github-avatar.png'
-const WALLPAPER_URL = '/images/macbook-wallpaper.png'
-const DESKTOP_ANALYSIS_WIDTH = 1120
-const TABLET_ANALYSIS_WIDTH = 900
-const MOBILE_ANALYSIS_WIDTH = 680
-const DESKTOP_ANALYSIS_INTERVAL = 42
-const MOBILE_ANALYSIS_INTERVAL = 90
+const SCREEN_WALLPAPER_URL = '/images/macbook-wallpaper-screen.png'
 const MIN_LOADER_TIME = 450
-const SCREEN_TRACK_POINTS = [
-  { time: 3.78, top: 38.15, left: 38.2, width: 22.6, height: 28.15 },
-  { time: 4.1, top: 31.1, left: 35.35, width: 27.8, height: 35.1 },
-  { time: 4.45, top: 23.9, left: 32.15, width: 33.6, height: 42.35 },
-  { time: 4.75, top: 17.8, left: 29.6, width: 38.85, height: 48.6 },
-  { time: 5.04, top: 14.92, left: 27.34, width: 42.42, height: 52.12 },
-]
-const SCREEN_START_TIME = SCREEN_TRACK_POINTS[0].time
-const SCREEN_END_TIME = SCREEN_TRACK_POINTS[SCREEN_TRACK_POINTS.length - 1].time
+const VIDEO_SOURCE_WIDTH = 2048
+const VIDEO_SOURCE_HEIGHT = 1012
+const FINAL_SCREEN_RECT = {
+  x: 0.319,
+  y: 0.146,
+  width: 0.344,
+  height: 0.514,
+}
 
 type ScenePhase = 'loading' | 'intro' | 'locked' | 'desktop' | 'reversing'
-type ScreenMode = 'hidden' | 'dark' | 'lock' | 'desktop' | 'off'
-type ScreenTrackPoint = (typeof SCREEN_TRACK_POINTS)[number]
-type ScreenBounds = { minX: number; minY: number; maxX: number; maxY: number }
-type ScreenSpan = { y: number; minX: number; maxX: number }
-type ScreenMask = {
-  bounds: ScreenBounds
-  coverClipPath: string
-  sourceHeight: number
-  sourceWidth: number
-  uiClipPath: string
-}
-type TimedScreenMask = { mask: ScreenMask; time: number }
+type ScreenMode = 'hidden' | 'lock' | 'desktop'
+type VideoSources = { forward: string; reverse: string }
 
 export function LaptopIntro() {
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const forwardVideoRef = useRef<HTMLVideoElement>(null)
+  const reverseVideoRef = useRef<HTMLVideoElement>(null)
   const screenRef = useRef<HTMLDivElement>(null)
-  const lastMaskRef = useRef<ScreenMask | null>(null)
-  const maskTimelineRef = useRef<TimedScreenMask[]>([])
-  const frameRef = useRef<number | null>(null)
-  const sourceRef = useRef(getIntroVideoUrl())
-  const lastAnalysisAtRef = useRef(0)
   const phaseRef = useRef<ScenePhase>('loading')
   const screenModeRef = useRef<ScreenMode>('hidden')
   const [phase, setPhase] = useState<ScenePhase>('loading')
   const [screenMode, setScreenMode] = useState<ScreenMode>('hidden')
-  const [videoSource, setVideoSource] = useState(() => getIntroVideoUrl())
+  const sources = useMemo(() => getVideoSources(), [])
 
   const setPhaseState = useCallback((nextPhase: ScenePhase) => {
     phaseRef.current = nextPhase
@@ -59,285 +38,134 @@ export function LaptopIntro() {
   }, [])
 
   const setScreenModeState = useCallback((nextMode: ScreenMode) => {
-    if (screenModeRef.current === nextMode) {
-      return
-    }
-
     screenModeRef.current = nextMode
     setScreenMode(nextMode)
   }, [])
 
-  const syncScreenToVideo = useCallback((time: number) => {
+  const syncScreenToVideo = useCallback((video: HTMLVideoElement | null) => {
     const screen = screenRef.current
-    if (!screen) {
-      return
-    }
-
-    const track = getScreenTrack(time)
-    screen.style.setProperty('--screen-top', `${track.top}vh`)
-    screen.style.setProperty('--screen-left', `${track.left}vw`)
-    screen.style.setProperty('--screen-width', `${track.width}vw`)
-    screen.style.setProperty('--screen-height', `${track.height}vh`)
-    screen.style.setProperty('--screen-clip', 'inset(0)')
-    screen.style.setProperty('--screen-ui-clip', 'inset(3% 2.5% 4% 2.5%)')
-  }, [])
-
-  const syncScreenToMask = useCallback((mask: ScreenMask | null) => {
-    const screen = screenRef.current
-    const video = videoRef.current
-    const canvas = canvasRef.current
-    if (!screen || !video || !canvas || !mask) {
+    if (!screen || !video) {
       return false
     }
 
-    const frame = getMediaCoverFrame(video, mask.sourceWidth, mask.sourceHeight)
-    if (!frame) {
+    const mediaFrame = getMediaCoverFrame(video)
+    if (!mediaFrame) {
       return false
     }
 
-    const { bounds } = mask
-    const left = frame.left + bounds.minX * frame.scale
-    const top = frame.top + bounds.minY * frame.scale
-    const width = (bounds.maxX - bounds.minX + 1) * frame.scale
-    const height = (bounds.maxY - bounds.minY + 1) * frame.scale
+    const top = mediaFrame.top + FINAL_SCREEN_RECT.y * mediaFrame.height
+    const left = mediaFrame.left + FINAL_SCREEN_RECT.x * mediaFrame.width
+    const width = FINAL_SCREEN_RECT.width * mediaFrame.width
+    const height = FINAL_SCREEN_RECT.height * mediaFrame.height
 
     screen.style.setProperty('--screen-top', `${top}px`)
     screen.style.setProperty('--screen-left', `${left}px`)
     screen.style.setProperty('--screen-width', `${width}px`)
     screen.style.setProperty('--screen-height', `${height}px`)
-    screen.style.setProperty('--screen-clip', mask.coverClipPath)
-    screen.style.setProperty('--screen-ui-clip', mask.uiClipPath)
     return true
   }, [])
 
-  const syncScreenToLatestMask = useCallback(() => {
-    const video = videoRef.current
-    if (syncScreenToMask(lastMaskRef.current)) {
-      return
+  const resetAfterReverse = useCallback(() => {
+    const forwardVideo = forwardVideoRef.current
+    const reverseVideo = reverseVideoRef.current
+
+    reverseVideo?.pause()
+    if (reverseVideo) {
+      reverseVideo.currentTime = 0
     }
 
-    syncScreenToVideo(video?.duration || SCREEN_TRACK_POINTS[SCREEN_TRACK_POINTS.length - 1].time)
-  }, [syncScreenToMask, syncScreenToVideo])
-
-  const analyzeScene = useCallback(() => {
-    const video = videoRef.current
-    const canvas = canvasRef.current
-    if (!video || !canvas || !video.videoWidth || !video.videoHeight) {
-      return null
+    forwardVideo?.pause()
+    if (forwardVideo) {
+      forwardVideo.currentTime = 0
+      syncScreenToVideo(forwardVideo)
     }
 
-    const width = getAnalysisWidth()
-    const height = Math.round((width * video.videoHeight) / video.videoWidth)
-    if (canvas.width !== width || canvas.height !== height) {
-      canvas.width = width
-      canvas.height = height
-    }
-
-    const context = canvas.getContext('2d', { willReadFrequently: true })
-    if (!context) {
-      return null
-    }
-
-    context.drawImage(video, 0, 0, width, height)
-    const frame = context.getImageData(0, 0, width, height)
-    const mask = findScreenMask(frame.data, width, height)
-    if (!mask) {
-      return null
-    }
-
-    lastMaskRef.current = mask
-    syncScreenToMask(mask)
-
-    if (phaseRef.current === 'intro') {
-      rememberMask(maskTimelineRef.current, video.currentTime, mask)
-    }
-
-    if (phaseRef.current === 'intro' && screenModeRef.current === 'hidden') {
-      setScreenModeState('dark')
-    }
-
-    return mask
-  }, [setScreenModeState, syncScreenToMask])
-
-  const syncReverseScreenCover = useCallback(() => {
-    const video = videoRef.current
-    if (!video) {
-      return
-    }
-
-    const forwardTime = SCREEN_END_TIME - video.currentTime
-    if (forwardTime < SCREEN_START_TIME - 0.12) {
-      setScreenModeState('hidden')
-      return
-    }
-
-    const mask = getNearestMask(maskTimelineRef.current, forwardTime)
-    if (mask) {
-      syncScreenToMask(mask)
-    } else {
-      syncScreenToVideo(forwardTime)
-    }
-
-    setScreenModeState('off')
-  }, [setScreenModeState, syncScreenToMask, syncScreenToVideo])
-
-  const stopFrameLoop = useCallback(() => {
-    if (frameRef.current !== null) {
-      window.cancelAnimationFrame(frameRef.current)
-      frameRef.current = null
-    }
-  }, [])
-
-  const startFrameLoop = useCallback(() => {
-    if (frameRef.current !== null) {
-      return
-    }
-
-    function tick(timestamp: number) {
-      if (phaseRef.current === 'reversing') {
-        syncReverseScreenCover()
-        frameRef.current = window.requestAnimationFrame(tick)
-        return
-      }
-
-      const interval = getAnalysisInterval()
-      if (timestamp - lastAnalysisAtRef.current >= interval) {
-        lastAnalysisAtRef.current = timestamp
-        analyzeScene()
-      }
-
-      if (phaseRef.current === 'intro') {
-        frameRef.current = window.requestAnimationFrame(tick)
-        return
-      }
-
-      frameRef.current = null
-    }
-
-    frameRef.current = window.requestAnimationFrame(tick)
-  }, [analyzeScene, syncReverseScreenCover])
-
-  const setPlaybackSource = useCallback(
-    async (source: string) => {
-      const video = videoRef.current
-      if (!video) {
-        return
-      }
-
-      if (sourceRef.current !== source) {
-        sourceRef.current = source
-        setVideoSource(source)
-        video.src = source
-        video.load()
-      }
-
-      await waitForVideoFrame(video)
-    },
-    [],
-  )
+    setScreenModeState('hidden')
+    setPhaseState('intro')
+  }, [setPhaseState, setScreenModeState, syncScreenToVideo])
 
   const playForward = useCallback(async () => {
-    const video = videoRef.current
-    if (!video) {
+    const forwardVideo = forwardVideoRef.current
+    const reverseVideo = reverseVideoRef.current
+    if (!forwardVideo) {
       return
     }
 
-    stopFrameLoop()
-    lastAnalysisAtRef.current = 0
-    maskTimelineRef.current = []
-    setPhaseState('intro')
+    reverseVideo?.pause()
+    if (reverseVideo) {
+      reverseVideo.currentTime = 0
+    }
+
+    forwardVideo.pause()
+    forwardVideo.playbackRate = 1
+    forwardVideo.currentTime = 0
+    syncScreenToVideo(forwardVideo)
     setScreenModeState('hidden')
-    await setPlaybackSource(getIntroVideoUrl())
-    video.pause()
-    video.playbackRate = 1
-    video.currentTime = 0
-    analyzeScene()
+    setPhaseState('intro')
 
     try {
-      await video.play()
-      startFrameLoop()
+      await forwardVideo.play()
     } catch {
-      // Muted autoplay should start the cinematic scene; a user tap retries when the browser blocks it.
+      // User pointer/tap retries playback when autoplay is blocked.
     }
-  }, [analyzeScene, setPhaseState, setPlaybackSource, setScreenModeState, startFrameLoop, stopFrameLoop])
+  }, [setPhaseState, setScreenModeState, syncScreenToVideo])
 
   const openDesktop = useCallback(() => {
     if (phaseRef.current !== 'locked') {
       return
     }
 
-    syncScreenToLatestMask()
-    setPhaseState('desktop')
+    syncScreenToVideo(forwardVideoRef.current)
     setScreenModeState('desktop')
-  }, [setPhaseState, setScreenModeState, syncScreenToLatestMask])
-
-  const resetAfterReverse = useCallback(async () => {
-    const video = videoRef.current
-    stopFrameLoop()
-    setScreenModeState('hidden')
-    setPhaseState('intro')
-    lastMaskRef.current = null
-
-    if (!video) {
-      return
-    }
-
-    await setPlaybackSource(getIntroVideoUrl())
-    video.pause()
-    video.currentTime = 0
-    syncScreenToVideo(0)
-  }, [setPhaseState, setPlaybackSource, setScreenModeState, stopFrameLoop, syncScreenToVideo])
+    setPhaseState('desktop')
+  }, [setPhaseState, setScreenModeState, syncScreenToVideo])
 
   const reverseToStart = useCallback(async () => {
-    const video = videoRef.current
-    if (!video || phaseRef.current !== 'desktop') {
+    const forwardVideo = forwardVideoRef.current
+    const reverseVideo = reverseVideoRef.current
+    if (!reverseVideo || phaseRef.current !== 'desktop') {
       return
     }
 
-    stopFrameLoop()
+    setScreenModeState('hidden')
     setPhaseState('reversing')
-    setScreenModeState('off')
-    await setPlaybackSource(getReverseVideoUrl())
-    video.pause()
-    video.playbackRate = 1
-    video.currentTime = 0
-    syncReverseScreenCover()
-    startFrameLoop()
+    forwardVideo?.pause()
+    reverseVideo.pause()
+    reverseVideo.playbackRate = 1
+    reverseVideo.currentTime = 0
 
     try {
-      await video.play()
+      await waitForVideoFrame(reverseVideo)
+      await reverseVideo.play()
     } catch {
-      void resetAfterReverse()
+      resetAfterReverse()
     }
-  }, [resetAfterReverse, setPhaseState, setPlaybackSource, setScreenModeState, startFrameLoop, stopFrameLoop, syncReverseScreenCover])
+  }, [resetAfterReverse, setPhaseState, setScreenModeState])
 
   useEffect(() => {
-    const sceneVideo = videoRef.current
-    if (!sceneVideo) {
+    const forwardVideo = forwardVideoRef.current
+    const reverseVideo = reverseVideoRef.current
+    if (!forwardVideo || !reverseVideo) {
       return
     }
-    const activeVideo: HTMLVideoElement = sceneVideo
+    const forwardElement = forwardVideo
+    const reverseElement = reverseVideo
 
     let cancelled = false
 
     async function loadScene() {
       const avatar = new Image()
-      const wallpaper = new Image()
-      const reverseVideo = document.createElement('video')
+      const screenWallpaper = new Image()
       avatar.decoding = 'async'
-      wallpaper.decoding = 'async'
+      screenWallpaper.decoding = 'async'
       avatar.src = AVATAR_URL
-      wallpaper.src = WALLPAPER_URL
-      reverseVideo.muted = true
-      reverseVideo.playsInline = true
-      reverseVideo.preload = 'auto'
-      reverseVideo.src = getReverseVideoUrl()
+      screenWallpaper.src = SCREEN_WALLPAPER_URL
 
       await Promise.all([
-        waitForVideoFrame(activeVideo),
-        waitForVideoFrame(reverseVideo),
+        waitForVideoFrame(forwardElement),
+        waitForVideoFrame(reverseElement),
         waitForImage(avatar),
-        waitForImage(wallpaper),
+        waitForImage(screenWallpaper),
         wait(MIN_LOADER_TIME),
       ])
 
@@ -345,63 +173,59 @@ export function LaptopIntro() {
         return
       }
 
-      analyzeScene()
+      syncScreenToVideo(forwardElement)
       void playForward()
     }
 
-    function handleEnded() {
-      if (phaseRef.current === 'reversing') {
-        void resetAfterReverse()
+    function handleForwardEnded() {
+      if (phaseRef.current !== 'intro') {
         return
       }
 
-      activeVideo.pause()
-      if (Number.isFinite(activeVideo.duration)) {
-        activeVideo.currentTime = Math.max(activeVideo.duration - 0.04, 0)
+      forwardElement.pause()
+      if (Number.isFinite(forwardElement.duration)) {
+        forwardElement.currentTime = Math.max(forwardElement.duration - 0.04, 0)
       }
 
-      const mask = analyzeScene()
-      if (!syncScreenToMask(mask)) {
-        syncScreenToVideo(activeVideo.duration || SCREEN_TRACK_POINTS[SCREEN_TRACK_POINTS.length - 1].time)
-      }
-      setPhaseState('locked')
-      setScreenModeState('lock')
-      stopFrameLoop()
+      window.requestAnimationFrame(() => {
+        syncScreenToVideo(forwardElement)
+        setPhaseState('locked')
+        setScreenModeState('lock')
+      })
     }
 
-    activeVideo.addEventListener('ended', handleEnded)
+    function handleReverseEnded() {
+      resetAfterReverse()
+    }
+
+    forwardElement.addEventListener('ended', handleForwardEnded)
+    reverseElement.addEventListener('ended', handleReverseEnded)
     void loadScene()
 
     return () => {
       cancelled = true
-      activeVideo.removeEventListener('ended', handleEnded)
-      stopFrameLoop()
+      forwardElement.removeEventListener('ended', handleForwardEnded)
+      reverseElement.removeEventListener('ended', handleReverseEnded)
     }
-  }, [
-    analyzeScene,
-    playForward,
-    resetAfterReverse,
-    setPhaseState,
-    setScreenModeState,
-    stopFrameLoop,
-    syncScreenToMask,
-    syncScreenToVideo,
-  ])
+  }, [playForward, resetAfterReverse, setPhaseState, setScreenModeState, syncScreenToVideo])
 
   useEffect(() => {
     function handleResize() {
-      if (screenModeRef.current !== 'hidden') {
-        syncScreenToLatestMask()
-      }
+      const activeVideo = phaseRef.current === 'reversing' ? reverseVideoRef.current : forwardVideoRef.current
+      syncScreenToVideo(activeVideo)
     }
 
     window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [syncScreenToLatestMask])
+    window.visualViewport?.addEventListener('resize', handleResize)
+    return () => {
+      window.removeEventListener('resize', handleResize)
+      window.visualViewport?.removeEventListener('resize', handleResize)
+    }
+  }, [syncScreenToVideo])
 
   function handleScenePointerDown() {
-    const video = videoRef.current
-    if (!video || phase !== 'intro' || video.currentTime > 0.08 || !video.paused) {
+    const forwardVideo = forwardVideoRef.current
+    if (!forwardVideo || phase !== 'intro' || !forwardVideo.paused || forwardVideo.currentTime > 0.12) {
       return
     }
 
@@ -409,7 +233,7 @@ export function LaptopIntro() {
   }
 
   const screenIsActive = screenMode !== 'hidden'
-  const showOpen = screenMode === 'lock' && phase === 'locked'
+  const showForwardVideo = phase !== 'reversing'
 
   return (
     <section
@@ -418,8 +242,22 @@ export function LaptopIntro() {
     >
       <div className="video-stage" onPointerDown={handleScenePointerDown} aria-hidden="true">
         <div className="video-layer">
-          <video ref={videoRef} src={videoSource} muted playsInline preload="auto" />
-          <canvas ref={canvasRef} />
+          <video
+            ref={forwardVideoRef}
+            className={`scene-video scene-video-forward ${showForwardVideo ? 'is-visible' : ''}`}
+            src={sources.forward}
+            muted
+            playsInline
+            preload="auto"
+          />
+          <video
+            ref={reverseVideoRef}
+            className={`scene-video scene-video-reverse ${phase === 'reversing' ? 'is-visible' : ''}`}
+            src={sources.reverse}
+            muted
+            playsInline
+            preload="auto"
+          />
         </div>
       </div>
 
@@ -435,20 +273,18 @@ export function LaptopIntro() {
         className={`laptop-screen-ui video-screen-ui screen-${screenMode} ${screenIsActive ? 'is-active' : ''}`}
         aria-hidden={!screenIsActive}
       >
-        {screenMode === 'dark' ? <div className="screen-content dark-screen-content" /> : null}
         {screenMode === 'lock' ? (
           <div className="screen-content lock-screen-content">
             <img src={AVATAR_URL} alt="" />
             <strong>{profile.name}</strong>
             <span>Portfolio</span>
-            {showOpen ? (
+            {phase === 'locked' ? (
               <button type="button" className="lock-open-button" onClick={openDesktop}>
                 Open
               </button>
             ) : null}
           </div>
         ) : null}
-        {screenMode === 'off' ? <div className="screen-content off-screen-content" /> : null}
         {screenMode === 'desktop' ? (
           <div className="screen-content mac-desktop-layer" aria-hidden={false}>
             <MacDesktop onShutdown={reverseToStart} />
@@ -494,362 +330,33 @@ function wait(duration: number) {
   })
 }
 
-function getIntroVideoUrl() {
-  return isMobileViewport() ? MOBILE_INTRO_VIDEO_URL : INTRO_VIDEO_URL
-}
-
-function getReverseVideoUrl() {
-  return isMobileViewport() ? MOBILE_REVERSE_VIDEO_URL : REVERSE_VIDEO_URL
-}
-
-function getAnalysisWidth() {
-  if (typeof window === 'undefined') {
-    return DESKTOP_ANALYSIS_WIDTH
-  }
-
-  if (window.innerWidth <= 560) {
-    return MOBILE_ANALYSIS_WIDTH
-  }
-
-  if (window.innerWidth <= 860) {
-    return TABLET_ANALYSIS_WIDTH
-  }
-
-  return DESKTOP_ANALYSIS_WIDTH
-}
-
-function getAnalysisInterval() {
-  return isMobileViewport() ? MOBILE_ANALYSIS_INTERVAL : DESKTOP_ANALYSIS_INTERVAL
+function getVideoSources(): VideoSources {
+  return isMobileViewport()
+    ? { forward: MOBILE_FORWARD_VIDEO_URL, reverse: MOBILE_REVERSE_VIDEO_URL }
+    : { forward: FORWARD_VIDEO_URL, reverse: REVERSE_VIDEO_URL }
 }
 
 function isMobileViewport() {
   return typeof window !== 'undefined' && window.matchMedia('(max-width: 560px)').matches
 }
 
-function rememberMask(timeline: TimedScreenMask[], time: number, mask: ScreenMask) {
-  const last = timeline[timeline.length - 1]
-  if (last && Math.abs(last.time - time) < 0.06) {
-    last.mask = mask
-    last.time = time
-    return
-  }
+function getMediaCoverFrame(video: HTMLVideoElement) {
+  const rect = video.getBoundingClientRect()
+  const sourceWidth = video.videoWidth || VIDEO_SOURCE_WIDTH
+  const sourceHeight = video.videoHeight || VIDEO_SOURCE_HEIGHT
 
-  timeline.push({ time, mask })
-  if (timeline.length > 90) {
-    timeline.shift()
-  }
-}
-
-function getNearestMask(timeline: TimedScreenMask[], time: number) {
-  if (!timeline.length) {
-    return null
-  }
-
-  let nearest = timeline[0]
-  let nearestDistance = Math.abs(nearest.time - time)
-
-  for (let index = 1; index < timeline.length; index += 1) {
-    const candidate = timeline[index]
-    const distance = Math.abs(candidate.time - time)
-    if (distance < nearestDistance) {
-      nearest = candidate
-      nearestDistance = distance
-    }
-  }
-
-  return nearestDistance < 0.22 ? nearest.mask : null
-}
-
-function findScreenMask(data: Uint8ClampedArray, width: number, height: number): ScreenMask | null {
-  const candidateMask = new Uint8Array(width * height)
-  const strictMask = new Uint8Array(width * height)
-  const visited = new Uint8Array(width * height)
-
-  for (let index = 0; index < candidateMask.length; index += 1) {
-    const offset = index * 4
-    if (isGreenScreenPixel(data[offset], data[offset + 1], data[offset + 2])) {
-      candidateMask[index] = 1
-      strictMask[index] = 1
-    } else if (isGreenScreenEdgePixel(data[offset], data[offset + 1], data[offset + 2])) {
-      candidateMask[index] = 1
-    }
-  }
-
-  let bestComponent: { bounds: ScreenBounds; spans: ScreenSpan[]; strictArea: number } | null = null
-  const stack: number[] = []
-
-  for (let index = 0; index < candidateMask.length; index += 1) {
-    if (!candidateMask[index] || visited[index]) {
-      continue
-    }
-
-    stack.length = 0
-    stack.push(index)
-    visited[index] = 1
-
-    let strictArea = 0
-    let minX = width
-    let minY = height
-    let maxX = -1
-    let maxY = -1
-    const rowRanges = new Map<number, { minX: number; maxX: number }>()
-
-    while (stack.length) {
-      const current = stack.pop()
-      if (current === undefined) {
-        continue
-      }
-
-      const x = current % width
-      const y = Math.floor(current / width)
-      if (strictMask[current]) {
-        strictArea += 1
-      }
-      minX = Math.min(minX, x)
-      minY = Math.min(minY, y)
-      maxX = Math.max(maxX, x)
-      maxY = Math.max(maxY, y)
-      const row = rowRanges.get(y)
-      if (row) {
-        row.minX = Math.min(row.minX, x)
-        row.maxX = Math.max(row.maxX, x)
-      } else {
-        rowRanges.set(y, { minX: x, maxX: x })
-      }
-
-      const left = current - 1
-      const right = current + 1
-      const up = current - width
-      const down = current + width
-
-      if (x > 0 && candidateMask[left] && !visited[left]) {
-        visited[left] = 1
-        stack.push(left)
-      }
-      if (x < width - 1 && candidateMask[right] && !visited[right]) {
-        visited[right] = 1
-        stack.push(right)
-      }
-      if (y > 0 && candidateMask[up] && !visited[up]) {
-        visited[up] = 1
-        stack.push(up)
-      }
-      if (y < height - 1 && candidateMask[down] && !visited[down]) {
-        visited[down] = 1
-        stack.push(down)
-      }
-    }
-
-    if (strictArea > (bestComponent?.strictArea ?? 0)) {
-      const spans = Array.from(rowRanges, ([y, range]) => ({ y, minX: range.minX, maxX: range.maxX })).sort(
-        (a, b) => a.y - b.y,
-      )
-      bestComponent = { bounds: { minX, minY, maxX, maxY }, spans, strictArea }
-    }
-  }
-
-  if (!bestComponent || bestComponent.strictArea < 900) {
-    return null
-  }
-
-  const coverSpans = normalizeScreenSpans(bestComponent.spans, bestComponent.bounds, width, height)
-  const coverBounds = getBoundsFromSpans(coverSpans)
-  if (!coverBounds) {
-    return null
-  }
-
-  const safeInset = clamp(Math.round((coverBounds.maxX - coverBounds.minX) * 0.018), 4, 14)
-  const uiSpans = coverSpans
-    .map((span) => ({
-      y: span.y,
-      minX: span.minX + safeInset,
-      maxX: span.maxX - safeInset,
-    }))
-    .filter((span) => span.maxX > span.minX)
-
-  return {
-    bounds: coverBounds,
-    coverClipPath: 'inset(0)',
-    sourceHeight: height,
-    sourceWidth: width,
-    uiClipPath: getScreenClipPath(uiSpans, coverBounds),
-  }
-}
-
-function isGreenScreenPixel(red: number, green: number, blue: number) {
-  const maxOtherChannel = Math.max(red, blue)
-  return green > 118 && green - maxOtherChannel > 38 && green > red * 1.22 && green > blue * 1.18
-}
-
-function isGreenScreenEdgePixel(red: number, green: number, blue: number) {
-  const maxOtherChannel = Math.max(red, blue)
-  return green > 42 && green - maxOtherChannel > 7 && green > red * 1.06 && green > blue * 1.06
-}
-
-function normalizeScreenSpans(rawSpans: ScreenSpan[], bounds: ScreenBounds, canvasWidth: number, canvasHeight: number) {
-  const spansByY = new Map(rawSpans.map((span) => [span.y, span]))
-  const normalized: ScreenSpan[] = []
-  const maskHeight = bounds.maxY - bounds.minY + 1
-  const verticalBleed = clamp(Math.round(maskHeight * 0.012), 3, 8)
-  const firstY = clamp(bounds.minY - verticalBleed, 0, canvasHeight - 1)
-  const lastY = clamp(bounds.maxY + verticalBleed, 0, canvasHeight - 1)
-
-  for (let y = firstY; y <= lastY; y += 1) {
-    const span = spansByY.get(y) ?? interpolateMissingSpan(y, spansByY, bounds.minY, bounds.maxY)
-    if (!span) {
-      continue
-    }
-
-    const spanWidth = span.maxX - span.minX + 1
-    const edgeBleed = clamp(Math.round(spanWidth * 0.008), 2, 6)
-    normalized.push({
-      y,
-      minX: clamp(span.minX - edgeBleed, 0, canvasWidth - 1),
-      maxX: clamp(span.maxX + edgeBleed, 0, canvasWidth - 1),
-    })
-  }
-
-  return normalized
-}
-
-function interpolateMissingSpan(y: number, spansByY: Map<number, ScreenSpan>, minY: number, maxY: number) {
-  let previous = y - 1
-  while (previous >= minY && !spansByY.has(previous)) {
-    previous -= 1
-  }
-
-  let next = y + 1
-  while (next <= maxY && !spansByY.has(next)) {
-    next += 1
-  }
-
-  const previousSpan = spansByY.get(previous)
-  const nextSpan = spansByY.get(next)
-
-  if (previousSpan && nextSpan) {
-    const progress = (y - previous) / (next - previous)
-    return {
-      y,
-      minX: Math.round(interpolate(previousSpan.minX, nextSpan.minX, progress)),
-      maxX: Math.round(interpolate(previousSpan.maxX, nextSpan.maxX, progress)),
-    }
-  }
-
-  if (previousSpan) {
-    return { ...previousSpan, y }
-  }
-
-  if (nextSpan) {
-    return { ...nextSpan, y }
-  }
-
-  return null
-}
-
-function getBoundsFromSpans(spans: ScreenSpan[]): ScreenBounds | null {
-  if (!spans.length) {
-    return null
-  }
-
-  return spans.reduce<ScreenBounds>(
-    (bounds, span) => ({
-      minX: Math.min(bounds.minX, span.minX),
-      minY: Math.min(bounds.minY, span.y),
-      maxX: Math.max(bounds.maxX, span.maxX),
-      maxY: Math.max(bounds.maxY, span.y),
-    }),
-    { minX: Number.POSITIVE_INFINITY, minY: Number.POSITIVE_INFINITY, maxX: -1, maxY: -1 },
-  )
-}
-
-function getScreenClipPath(spans: ScreenSpan[], bounds: ScreenBounds) {
-  const sampleCount = Math.min(7, spans.length)
-  const top = getAverageSpan(spans.slice(0, sampleCount))
-  const bottom = getAverageSpan(spans.slice(-sampleCount))
-  const width = Math.max(bounds.maxX - bounds.minX, 1)
-  const height = Math.max(bounds.maxY - bounds.minY, 1)
-  const point = (x: number, y: number) =>
-    `${formatPercent(((x - bounds.minX) / width) * 100)} ${formatPercent(((y - bounds.minY) / height) * 100)}`
-
-  return `polygon(${point(top.minX, top.y)}, ${point(top.maxX, top.y)}, ${point(bottom.maxX, bottom.y)}, ${point(
-    bottom.minX,
-    bottom.y,
-  )})`
-}
-
-function getAverageSpan(spans: ScreenSpan[]) {
-  const total = spans.reduce(
-    (sum, span) => ({
-      y: sum.y + span.y,
-      minX: sum.minX + span.minX,
-      maxX: sum.maxX + span.maxX,
-    }),
-    { y: 0, minX: 0, maxX: 0 },
-  )
-
-  return {
-    y: total.y / spans.length,
-    minX: total.minX / spans.length,
-    maxX: total.maxX / spans.length,
-  }
-}
-
-function getMediaCoverFrame(element: HTMLElement, sourceWidth: number, sourceHeight: number) {
-  const rect = element.getBoundingClientRect()
   if (!sourceWidth || !sourceHeight || !rect.width || !rect.height) {
     return null
   }
 
   const scale = Math.max(rect.width / sourceWidth, rect.height / sourceHeight)
-  const renderedWidth = sourceWidth * scale
-  const renderedHeight = sourceHeight * scale
+  const width = sourceWidth * scale
+  const height = sourceHeight * scale
 
   return {
-    left: rect.left + (rect.width - renderedWidth) / 2,
-    top: rect.top + (rect.height - renderedHeight) / 2,
-    scale,
+    height,
+    left: rect.left + (rect.width - width) / 2,
+    top: rect.top + (rect.height - height) / 2,
+    width,
   }
-}
-
-function formatPercent(value: number) {
-  return `${clamp(Number(value.toFixed(2)), -8, 108)}%`
-}
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(Math.max(value, min), max)
-}
-
-function getScreenTrack(time: number): ScreenTrackPoint {
-  const firstPoint = SCREEN_TRACK_POINTS[0]
-  const lastPoint = SCREEN_TRACK_POINTS[SCREEN_TRACK_POINTS.length - 1]
-
-  if (time <= firstPoint.time) {
-    return firstPoint
-  }
-
-  if (time >= lastPoint.time) {
-    return lastPoint
-  }
-
-  for (let index = 1; index < SCREEN_TRACK_POINTS.length; index += 1) {
-    const previous = SCREEN_TRACK_POINTS[index - 1]
-    const next = SCREEN_TRACK_POINTS[index]
-
-    if (time <= next.time) {
-      const progress = (time - previous.time) / (next.time - previous.time)
-      return {
-        time,
-        top: interpolate(previous.top, next.top, progress),
-        left: interpolate(previous.left, next.left, progress),
-        width: interpolate(previous.width, next.width, progress),
-        height: interpolate(previous.height, next.height, progress),
-      }
-    }
-  }
-
-  return lastPoint
-}
-
-function interpolate(start: number, end: number, progress: number) {
-  return start + (end - start) * progress
 }

@@ -1,15 +1,15 @@
 # Kacper-Bernecki
 
-Interactive cinematic MacBook portfolio built with React, Vite, TypeScript, Canvas analysis, and a native MP4 intro.
+Interactive cinematic MacBook portfolio built with React, Vite, TypeScript, and pre-rendered MP4 intro scenes.
 
 Live site: https://kacper-bernecki.vercel.app  
 GitHub: https://github.com/ft4k696bk6-prog/Kacper-Bernecki
 
 ## Experience
 
-- Native MP4 intro with a MacBook opening on a minimalist desk.
-- Green-screen detection that anchors login and desktop UI to the laptop screen.
-- Smooth shutdown using a local reverse video with the laptop screen turned off.
+- Native clean MP4 intro with a MacBook opening on a minimalist desk.
+- Dark lock screen shown only after the cinematic intro reaches the final frame.
+- Smooth shutdown using a preloaded local reverse video with the laptop screen already turned off.
 - Interactive Mac-style desktop with dock shortcuts, external links, and mobile-friendly focus windows.
 - Functional portfolio sections for projects, about, skills, contact, booking, and games.
 
@@ -32,11 +32,12 @@ GitHub: https://github.com/ft4k696bk6-prog/Kacper-Bernecki
 
 ## Media Assets
 
-- Intro video: `public/videos/macbook-work-scene.mp4`
-- Shutdown video: `public/videos/macbook-work-scene-reverse-off.mp4`
-- Mobile intro video: `public/videos/macbook-work-scene-mobile.mp4`
-- Mobile shutdown video: `public/videos/macbook-work-scene-reverse-off-mobile.mp4`
+- Clean intro video: `public/videos/macbook-work-scene-clean.mp4`
+- Clean shutdown video: `public/videos/macbook-work-scene-reverse-clean.mp4`
+- Mobile clean intro video: `public/videos/macbook-work-scene-clean-mobile.mp4`
+- Mobile clean shutdown video: `public/videos/macbook-work-scene-reverse-clean-mobile.mp4`
 - MacBook wallpaper: `public/images/macbook-wallpaper.png`
+- MacBook screen wallpaper crop: `public/images/macbook-wallpaper-screen.png`
 - GitHub avatar: `public/images/github-avatar.png`
 
 ## Terminal Commands
