@@ -10,6 +10,7 @@ import {
   GitBranch,
   Mail,
   Phone,
+  Power,
   Sparkles,
   Terminal,
   UserRound,
@@ -60,7 +61,11 @@ const linkApps = [
   { id: 'phone', label: 'Phone', icon: Phone, href: `tel:${profile.phone.replace(/\s/g, '')}` },
 ]
 
-export function MacDesktop() {
+type MacDesktopProps = {
+  onShutdown?: () => void
+}
+
+export function MacDesktop({ onShutdown }: MacDesktopProps) {
   const [panel, setPanel] = useState<Panel>('projects')
   const [hovered, setHovered] = useState<string>('Projects')
   const [game, setGame] = useState<Game>(null)
@@ -242,7 +247,14 @@ export function MacDesktop() {
             <Sparkles size={16} />
             <span>Kacper OS</span>
           </div>
-          <span>{profile.name}</span>
+          <div className="menu-actions">
+            <span>{profile.name}</span>
+            {onShutdown ? (
+              <button type="button" className="menu-power" aria-label="Shut down MacBook" onClick={onShutdown}>
+                <Power size={14} />
+              </button>
+            ) : null}
+          </div>
         </div>
 
         <div className="desktop-layout">
@@ -350,6 +362,11 @@ export function MacDesktop() {
               </button>
             )
           })}
+          {onShutdown ? (
+            <button type="button" aria-label="Shut down MacBook" onClick={onShutdown} onMouseEnter={() => setHovered('Shut down')}>
+              <Power size={22} />
+            </button>
+          ) : null}
         </div>
       </div>
     </section>

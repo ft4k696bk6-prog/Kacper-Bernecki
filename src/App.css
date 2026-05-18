@@ -2,25 +2,45 @@
   min-height: 100svh;
   overflow: hidden;
   color: #eef3f2;
-  background: #f0ece5;
+  background: #050505;
 }
 
 .intro-scene {
   position: relative;
   min-height: 100svh;
   overflow: hidden;
-  background: #f0ece5;
+  background: #050505;
 }
 
-.three-stage {
+.video-stage {
   position: absolute;
   inset: 0;
+  overflow: hidden;
+  background: #050505;
 }
 
-.three-stage canvas {
+.video-layer {
+  position: absolute;
+  inset: 0;
+  transform: scale(1);
+  transform-origin: 50% 54%;
+  transition: transform 1.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.intro-scene.is-ready .video-layer {
+  transform: scale(1.055);
+}
+
+.intro-scene.is-reversing .video-layer {
+  transform: scale(1);
+  transition-duration: 0.55s;
+}
+
+.video-layer video {
   display: block;
   width: 100%;
   height: 100%;
+  object-fit: cover;
 }
 
 .laptop-screen-ui {
@@ -43,6 +63,14 @@
   transition:
     opacity 0.7s ease,
     transform 0.7s ease;
+}
+
+.video-screen-ui {
+  top: 15.25vh;
+  left: 27.65vw;
+  width: 41.85vw;
+  height: 51.55vh;
+  border-radius: clamp(7px, 0.75vw, 13px);
 }
 
 .laptop-screen-ui.is-active {
@@ -361,6 +389,28 @@
   align-items: center;
   gap: 8px;
   color: #f7efe1;
+}
+
+.menu-actions {
+  justify-content: flex-end;
+}
+
+.menu-power {
+  display: inline-grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: rgba(238, 243, 242, 0.82);
+  background: transparent;
+}
+
+.menu-power:hover,
+.menu-power:focus-visible {
+  border-color: rgba(212, 181, 126, 0.34);
+  outline: none;
+  background: rgba(255, 255, 255, 0.07);
 }
 
 .desktop-layout {
@@ -900,6 +950,14 @@
 
   .laptop-screen-ui .desktop-wallpaper {
     padding: 22px 7px 38px;
+  }
+
+  .video-screen-ui {
+    top: 15.7vh;
+    left: 0;
+    width: 100vw;
+    height: 50.6vh;
+    border-radius: 0;
   }
 
   .laptop-screen-ui .desktop-layout {
