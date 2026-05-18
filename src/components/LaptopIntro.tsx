@@ -2,20 +2,20 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { profile } from '../data/portfolio'
 import { MacDesktop } from './MacDesktop'
 
-const FORWARD_VIDEO_URL = '/videos/macbook-work-scene-clean.mp4?v=20260518-clean2'
-const MOBILE_FORWARD_VIDEO_URL = '/videos/macbook-work-scene-clean-mobile.mp4?v=20260518-clean2'
-const REVERSE_VIDEO_URL = '/videos/macbook-work-scene-reverse-clean.mp4?v=20260518-clean2'
-const MOBILE_REVERSE_VIDEO_URL = '/videos/macbook-work-scene-reverse-clean-mobile.mp4?v=20260518-clean2'
+const FORWARD_VIDEO_URL = '/videos/macbook-work-scene-clean.mp4?v=20260518-clean4'
+const MOBILE_FORWARD_VIDEO_URL = '/videos/macbook-work-scene-clean-mobile.mp4?v=20260518-clean4'
+const REVERSE_VIDEO_URL = '/videos/macbook-work-scene-reverse-clean.mp4?v=20260518-clean4'
+const MOBILE_REVERSE_VIDEO_URL = '/videos/macbook-work-scene-reverse-clean-mobile.mp4?v=20260518-clean4'
 const AVATAR_URL = '/images/github-avatar.png'
 const SCREEN_WALLPAPER_URL = '/images/macbook-wallpaper-screen.png'
 const MIN_LOADER_TIME = 450
-const VIDEO_SOURCE_WIDTH = 2048
-const VIDEO_SOURCE_HEIGHT = 1012
+const VIDEO_SOURCE_WIDTH = 4096
+const VIDEO_SOURCE_HEIGHT = 2024
 const FINAL_SCREEN_RECT = {
-  x: 0.319,
-  y: 0.146,
-  width: 0.344,
-  height: 0.514,
+  x: 0.325,
+  y: 0.173,
+  width: 0.333,
+  height: 0.472,
 }
 
 type ScenePhase = 'loading' | 'intro' | 'locked' | 'desktop' | 'reversing'

@@ -109,7 +109,7 @@
   left: var(--screen-left, 27.34vw);
   width: var(--screen-width, 42.42vw);
   height: var(--screen-height, 52.12vh);
-  border-radius: clamp(5px, 0.62vw, 10px);
+  border-radius: clamp(4px, 0.48vw, 8px);
 }
 
 .laptop-screen-ui.is-active {
