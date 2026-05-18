@@ -8,7 +8,6 @@ import {
   Gamepad2,
   GitBranch,
   Mail,
-  Phone,
   Power,
   Sparkles,
   Terminal,
@@ -72,8 +71,6 @@ const dockLinkApps: LinkApp[] = [
   { id: 'github', label: 'GitHub', icon: GitBranch, href: profile.github },
   { id: 'linkedin', label: 'LinkedIn', icon: UsersRound, href: profile.linkedin },
   { id: 'portfolio', label: 'Static portfolio', icon: BriefcaseBusiness, href: profile.staticPortfolio },
-  { id: 'email', label: 'Email', icon: Mail, href: `mailto:${profile.email}` },
-  { id: 'phone', label: 'Phone', icon: Phone, href: `tel:${profile.phone.replace(/\s/g, '')}` },
 ]
 
 type MacDesktopProps = {
@@ -160,7 +157,7 @@ export function MacDesktop({ onShutdown }: MacDesktopProps) {
 
     if (normalized === 'contact') {
       openPanel('contact')
-      appendLine('output', [`Email: ${profile.email}`, `Phone: ${profile.phone}`, `GitHub: ${profile.github}`, `LinkedIn: ${profile.linkedin}`])
+      appendLine('output', [`Portfolio contact form: ${profile.staticPortfolio}`, `GitHub: ${profile.github}`, `LinkedIn: ${profile.linkedin}`])
       return
     }
 
@@ -442,7 +439,8 @@ function AboutPanel() {
       ))}
       <div className="pill-row">
         <span>Business-first</span>
-        <span>AI-assisted</span>
+        <span>React</span>
+        <span>TypeScript</span>
         <span>Web apps</span>
         <span>CRM</span>
       </div>
@@ -504,8 +502,6 @@ function SkillsPanel() {
 function ContactPanel({ onOpenCalendar }: { onOpenCalendar: () => void }) {
   return (
     <div className="contact-grid">
-      <ActionCard href={`mailto:${profile.email}`} icon={Mail} label="Email" value={profile.email} />
-      <ActionCard href={`tel:${profile.phone.replace(/\s/g, '')}`} icon={Phone} label="Phone" value={profile.phone} />
       <ActionCard href={profile.github} icon={GitBranch} label="GitHub" value="ft4k696bk6-prog" />
       <ActionCard href={profile.linkedin} icon={UsersRound} label="LinkedIn" value="kacper-bernecki" />
       <ActionCard href={profile.staticPortfolio} icon={BriefcaseBusiness} label="Portfolio" value="kacper-portfolio.vercel.app" />
