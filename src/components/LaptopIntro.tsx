@@ -30,7 +30,7 @@ const CLOSE_SCREEN_RECT = {
   height: 0.5875,
 }
 
-type ScenePhase = 'loading' | 'intro' | 'locked' | 'enteringDesktop' | 'desktop' | 'exitingDesktop' | 'reversing'
+type ScenePhase = 'loading' | 'intro' | 'enteringLock' | 'locked' | 'desktop' | 'exitingDesktop' | 'reversing'
 type ScreenMode = 'hidden' | 'lock' | 'desktop'
 type MediaFrame = { height: number; left: number; top: number; width: number }
 type VideoSources = { forward: string; reverse: string }
@@ -155,19 +155,10 @@ export function LaptopIntro() {
     }
 
     clearTransitionTimer()
-    syncScreenToVideo(forwardVideoRef.current)
+    syncScreenToCloseFrame()
     setScreenModeState('desktop')
-    setPhaseState('enteringDesktop')
-
-    window.requestAnimationFrame(() => {
-      syncScreenToCloseFrame()
-      transitionTimeoutRef.current = window.setTimeout(() => {
-        syncScreenToCloseFrame()
-        setPhaseState('desktop')
-        transitionTimeoutRef.current = null
-      }, DESKTOP_TRANSITION_MS)
-    })
-  }, [clearTransitionTimer, setPhaseState, setScreenModeState, syncScreenToCloseFrame, syncScreenToVideo])
+    setPhaseState('desktop')
+  }, [clearTransitionTimer, setPhaseState, setScreenModeState, syncScreenToCloseFrame])
 
   const reverseToStart = useCallback(async () => {
     const forwardVideo = forwardVideoRef.current
@@ -252,8 +243,18 @@ export function LaptopIntro() {
 
       window.requestAnimationFrame(() => {
         syncScreenToVideo(forwardElement)
-        setPhaseState('locked')
-        setScreenModeState('lock')
+        setScreenModeState('hidden')
+        setPhaseState('enteringLock')
+
+        window.requestAnimationFrame(() => {
+          syncScreenToCloseFrame()
+          transitionTimeoutRef.current = window.setTimeout(() => {
+            syncScreenToCloseFrame()
+            setScreenModeState('lock')
+            setPhaseState('locked')
+            transitionTimeoutRef.current = null
+          }, DESKTOP_TRANSITION_MS)
+        })
       })
     }
 
@@ -271,11 +272,19 @@ export function LaptopIntro() {
       forwardElement.removeEventListener('ended', handleForwardEnded)
       reverseElement.removeEventListener('ended', handleReverseEnded)
     }
-  }, [clearTransitionTimer, playForward, resetAfterReverse, setPhaseState, setScreenModeState, syncScreenToVideo])
+  }, [
+    clearTransitionTimer,
+    playForward,
+    resetAfterReverse,
+    setPhaseState,
+    setScreenModeState,
+    syncScreenToCloseFrame,
+    syncScreenToVideo,
+  ])
 
   useEffect(() => {
     function handleResize() {
-      if (phaseRef.current === 'desktop' || phaseRef.current === 'enteringDesktop') {
+      if (phaseRef.current === 'desktop' || phaseRef.current === 'locked' || phaseRef.current === 'enteringLock') {
         syncScreenToCloseFrame()
         return
       }

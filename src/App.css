@@ -31,7 +31,8 @@
     transform 1.45s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-.intro-scene.is-enteringDesktop .video-layer,
+.intro-scene.is-enteringLock .video-layer,
+.intro-scene.is-locked .video-layer,
 .intro-scene.is-desktop .video-layer {
   opacity: 0;
   transform: scale(1.18);
@@ -74,12 +75,14 @@
   user-select: none;
 }
 
-.intro-scene.is-enteringDesktop .close-frame-layer,
+.intro-scene.is-enteringLock .close-frame-layer,
+.intro-scene.is-locked .close-frame-layer,
 .intro-scene.is-desktop .close-frame-layer {
   opacity: 1;
 }
 
-.intro-scene.is-enteringDesktop .close-frame-image,
+.intro-scene.is-enteringLock .close-frame-image,
+.intro-scene.is-locked .close-frame-image,
 .intro-scene.is-desktop .close-frame-image {
   transform: translate(-50%, -50%) scale(1.55);
 }
@@ -164,7 +167,7 @@
     transform 0.12s ease;
 }
 
-.intro-scene.is-enteringDesktop .laptop-screen-ui,
+.intro-scene.is-enteringLock .laptop-screen-ui,
 .intro-scene.is-exitingDesktop .laptop-screen-ui {
   transition:
     top 1.45s cubic-bezier(0.2, 0.8, 0.2, 1),
@@ -175,7 +178,7 @@
     transform 1.45s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-.intro-scene.is-enteringDesktop .laptop-screen-ui {
+.intro-scene.is-enteringLock .laptop-screen-ui {
   pointer-events: none;
 }
 
@@ -1510,7 +1513,8 @@ button.action-card {
     transform-origin: 50% 50%;
   }
 
-  .intro-scene.is-enteringDesktop .close-frame-image,
+  .intro-scene.is-enteringLock .close-frame-image,
+  .intro-scene.is-locked .close-frame-image,
   .intro-scene.is-desktop .close-frame-image {
     transform: translate(-50%, -50%) scale(2.22);
   }
