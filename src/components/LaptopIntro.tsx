@@ -10,6 +10,7 @@ const AVATAR_URL = '/images/github-avatar.png'
 const CLOSE_FRAME_URL = '/images/macbook-close-frame-clean.png'
 const SCREEN_WALLPAPER_URL = '/images/macbook-wallpaper-screen.png'
 const DESKTOP_TRANSITION_MS = 1450
+const LOCK_HUD_REVEAL_MS = 260
 const CLOSE_FRAME_DESKTOP_SCALE = 1.55
 const CLOSE_FRAME_MOBILE_SCALE = 2.22
 const MIN_LOADER_TIME = 450
@@ -41,6 +42,7 @@ export function LaptopIntro() {
   const closeFrameRef = useRef<HTMLImageElement>(null)
   const screenRef = useRef<HTMLDivElement>(null)
   const transitionTimeoutRef = useRef<number | null>(null)
+  const hudRevealTimeoutRef = useRef<number | null>(null)
   const phaseRef = useRef<ScenePhase>('loading')
   const screenModeRef = useRef<ScreenMode>('hidden')
   const [phase, setPhase] = useState<ScenePhase>('loading')
@@ -61,6 +63,11 @@ export function LaptopIntro() {
     if (transitionTimeoutRef.current !== null) {
       window.clearTimeout(transitionTimeoutRef.current)
       transitionTimeoutRef.current = null
+    }
+
+    if (hudRevealTimeoutRef.current !== null) {
+      window.clearTimeout(hudRevealTimeoutRef.current)
+      hudRevealTimeoutRef.current = null
     }
   }, [])
 
@@ -248,6 +255,11 @@ export function LaptopIntro() {
 
         window.requestAnimationFrame(() => {
           syncScreenToCloseFrame()
+          hudRevealTimeoutRef.current = window.setTimeout(() => {
+            setScreenModeState('lock')
+            hudRevealTimeoutRef.current = null
+          }, LOCK_HUD_REVEAL_MS)
+
           transitionTimeoutRef.current = window.setTimeout(() => {
             syncScreenToCloseFrame()
             setScreenModeState('lock')
@@ -359,8 +371,8 @@ export function LaptopIntro() {
             <img src={AVATAR_URL} alt="" />
             <strong>{profile.name}</strong>
             <span>Portfolio</span>
-            {phase === 'locked' ? (
-              <button type="button" className="lock-open-button" onClick={openDesktop}>
+            {phase === 'locked' || phase === 'enteringLock' ? (
+              <button type="button" className="lock-open-button" aria-disabled={phase !== 'locked'} onClick={openDesktop}>
                 Open
               </button>
             ) : null}
