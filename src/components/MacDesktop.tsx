@@ -16,7 +16,6 @@ import {
 } from 'lucide-react'
 import type { PortfolioCopy } from '../data/portfolio'
 import { usePortfolioLanguage } from '../i18n'
-import { LanguageToggle } from './LanguageToggle'
 import { BerniRushFrame } from '../games/BerniRushFrame'
 import { BreakoutGame } from '../games/BreakoutGame'
 import { NeonRunnerGame } from '../games/NeonRunnerGame'
@@ -279,7 +278,6 @@ export function MacDesktop({ onShutdown }: MacDesktopProps) {
           </div>
           <div className="menu-actions">
             <span>{profile.name}</span>
-            <LanguageToggle />
           </div>
         </div>
 
