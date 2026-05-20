@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
+import { usePortfolioLanguage } from '../i18n'
 
 const width = 720
 const height = 384
 const paddleWidth = 96
 
 export function BreakoutGame() {
+  const { lang } = usePortfolioLanguage()
+  const isPl = lang === 'pl'
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const frameRef = useRef<number | null>(null)
   const paddleX = useRef(width / 2 - paddleWidth / 2)
@@ -56,7 +59,7 @@ export function BreakoutGame() {
 
       context.fillStyle = 'rgba(214, 255, 231, 0.72)'
       context.font = '22px ui-monospace, SFMono-Regular, Menlo, monospace'
-      context.fillText(`score ${score}`, 24, 28)
+      context.fillText(`${isPl ? 'wynik' : 'score'} ${score}`, 24, 28)
     }
 
     function step() {
@@ -142,7 +145,7 @@ export function BreakoutGame() {
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('keyup', handleKeyUp)
     }
-  }, [score])
+  }, [isPl, score])
 
   function setTouchInput(direction: 'left' | 'right', pressed: boolean) {
     input.current[direction] = pressed
@@ -151,8 +154,8 @@ export function BreakoutGame() {
   return (
     <div className="game-shell">
       <div className="game-meta">
-        <span>score {score}</span>
-        <span>A/D or arrows</span>
+        <span>{isPl ? 'wynik' : 'score'} {score}</span>
+        <span>{isPl ? 'A/D albo strzałki' : 'A/D or arrows'}</span>
       </div>
       <canvas ref={canvasRef} width={width} height={height} aria-label="Breakout game" />
       <div className="game-controls game-controls-two" aria-label="Breakout touch controls">
@@ -162,7 +165,7 @@ export function BreakoutGame() {
           onPointerUp={() => setTouchInput('left', false)}
           onPointerLeave={() => setTouchInput('left', false)}
         >
-          left
+          {isPl ? 'lewo' : 'left'}
         </button>
         <button
           type="button"
@@ -170,7 +173,7 @@ export function BreakoutGame() {
           onPointerUp={() => setTouchInput('right', false)}
           onPointerLeave={() => setTouchInput('right', false)}
         >
-          right
+          {isPl ? 'prawo' : 'right'}
         </button>
       </div>
     </div>

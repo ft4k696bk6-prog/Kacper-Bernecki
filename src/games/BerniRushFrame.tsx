@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { ExternalLink } from 'lucide-react'
-import { profile } from '../data/portfolio'
+import { usePortfolioLanguage } from '../i18n'
 
 export function BerniRushFrame() {
+  const { t } = usePortfolioLanguage()
   const frameRef = useRef<HTMLIFrameElement>(null)
   const [loaded, setLoaded] = useState(false)
   const [showFallback, setShowFallback] = useState(false)
+  const url = t.profile.berniRushUrl
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -28,7 +30,7 @@ export function BerniRushFrame() {
       <iframe
         ref={frameRef}
         title="Berni Rush"
-        src={profile.berniRushUrl}
+        src={url}
         onLoad={() => {
           setLoaded(true)
           frameRef.current?.focus()
@@ -37,9 +39,9 @@ export function BerniRushFrame() {
         sandbox="allow-scripts allow-same-origin allow-forms allow-pointer-lock allow-popups"
       />
       {showFallback && !loaded ? (
-        <a className="game-fallback-link" href={profile.berniRushUrl} target="_blank" rel="noreferrer">
+        <a className="game-fallback-link" href={url} target="_blank" rel="noreferrer">
           <ExternalLink size={14} />
-          Open in new tab
+          {t.ui.actions.live}
         </a>
       ) : null}
     </div>

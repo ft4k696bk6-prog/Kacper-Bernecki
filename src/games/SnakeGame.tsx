@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { usePortfolioLanguage } from '../i18n'
 
 type Direction = 'up' | 'down' | 'left' | 'right'
 type Point = { x: number; y: number }
@@ -10,6 +11,8 @@ const canvasWidth = columns * cellSize
 const canvasHeight = rows * cellSize
 
 export function SnakeGame() {
+  const { lang } = usePortfolioLanguage()
+  const isPl = lang === 'pl'
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const directionRef = useRef<Direction>('right')
   const nextDirectionRef = useRef<Direction>('right')
@@ -67,7 +70,7 @@ export function SnakeGame() {
         context.fillStyle = '#ff6b6b'
         context.font = '24px ui-monospace, SFMono-Regular, Menlo, monospace'
         context.textAlign = 'center'
-        context.fillText('CRASHED - PRESS RESET', canvasWidth / 2, canvasHeight / 2)
+        context.fillText(isPl ? 'KONIEC - RESET' : 'CRASHED - PRESS RESET', canvasWidth / 2, canvasHeight / 2)
       }
     }
 
@@ -134,7 +137,7 @@ export function SnakeGame() {
       window.clearInterval(timer)
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [status])
+  }, [isPl, status])
 
   function changeDirection(direction: Direction) {
     const current = directionRef.current
@@ -165,7 +168,7 @@ export function SnakeGame() {
   return (
     <div className="game-shell">
       <div className="game-meta">
-        <span>score {score}</span>
+        <span>{isPl ? 'wynik' : 'score'} {score}</span>
         <button type="button" onClick={reset}>
           reset
         </button>
@@ -173,16 +176,16 @@ export function SnakeGame() {
       <canvas ref={canvasRef} width={canvasWidth} height={canvasHeight} aria-label="Snake game" />
       <div className="game-controls" aria-label="Snake touch controls">
         <button type="button" onClick={() => changeDirection('up')}>
-          up
+          {isPl ? 'góra' : 'up'}
         </button>
         <button type="button" onClick={() => changeDirection('left')}>
-          left
+          {isPl ? 'lewo' : 'left'}
         </button>
         <button type="button" onClick={() => changeDirection('down')}>
-          down
+          {isPl ? 'dół' : 'down'}
         </button>
         <button type="button" onClick={() => changeDirection('right')}>
-          right
+          {isPl ? 'prawo' : 'right'}
         </button>
       </div>
     </div>

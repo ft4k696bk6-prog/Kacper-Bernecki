@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { usePortfolioLanguage } from '../i18n'
 
 const width = 720
 const height = 384
@@ -8,6 +9,8 @@ type Obstacle = { x: number; width: number; height: number; scored: boolean }
 type RunnerStatus = 'ready' | 'running' | 'crashed'
 
 export function NeonRunnerGame() {
+  const { lang } = usePortfolioLanguage()
+  const isPl = lang === 'pl'
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const frameRef = useRef<number | null>(null)
   const playerRef = useRef({ y: groundY - 46, vy: 0 })
@@ -103,7 +106,7 @@ export function NeonRunnerGame() {
 
       context.fillStyle = 'rgba(247, 239, 225, 0.82)'
       context.font = '22px ui-monospace, SFMono-Regular, Menlo, monospace'
-      context.fillText(`score ${scoreRef.current}`, 24, 34)
+      context.fillText(`${isPl ? 'wynik' : 'score'} ${scoreRef.current}`, 24, 34)
 
       if (statusRef.current === 'ready' || statusRef.current === 'crashed') {
         context.fillStyle = 'rgba(5, 9, 14, 0.78)'
@@ -112,7 +115,13 @@ export function NeonRunnerGame() {
         context.font = '28px ui-monospace, SFMono-Regular, Menlo, monospace'
         context.textAlign = 'center'
         context.fillText(
-          statusRef.current === 'ready' ? 'TAP / SPACE TO START' : 'CRASHED - TAP TO RESET',
+          statusRef.current === 'ready'
+            ? isPl
+              ? 'TAP / SPACJA - START'
+              : 'TAP / SPACE TO START'
+            : isPl
+              ? 'KONIEC - TAP, ŻEBY ZRESETOWAĆ'
+              : 'CRASHED - TAP TO RESET',
           width / 2,
           height / 2,
         )
@@ -187,13 +196,25 @@ export function NeonRunnerGame() {
       canvas.removeEventListener('pointerdown', jump)
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [])
+  }, [isPl])
 
   return (
     <div className="game-shell neon-runner-shell">
       <div className="game-meta">
-        <span>score {score}</span>
-        <span>{status === 'ready' ? 'tap to start' : status === 'running' ? 'space / tap' : 'tap to reset'}</span>
+        <span>{isPl ? 'wynik' : 'score'} {score}</span>
+        <span>
+          {status === 'ready'
+            ? isPl
+              ? 'tap, żeby zacząć'
+              : 'tap to start'
+            : status === 'running'
+              ? isPl
+                ? 'spacja / tap'
+                : 'space / tap'
+              : isPl
+                ? 'tap, żeby zresetować'
+                : 'tap to reset'}
+        </span>
       </div>
       <canvas ref={canvasRef} width={width} height={height} aria-label="Neon Runner game" />
     </div>

@@ -1,11 +1,14 @@
 import './App.css'
 import { LaptopIntro } from './components/LaptopIntro'
+import { PortfolioLanguageProvider } from './i18n'
 
 function App() {
   return (
-    <main className="app">
-      <LaptopIntro />
-    </main>
+    <PortfolioLanguageProvider>
+      <main className="app">
+        <LaptopIntro />
+      </main>
+    </PortfolioLanguageProvider>
   )
 }
 

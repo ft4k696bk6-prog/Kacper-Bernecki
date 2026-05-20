@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { profile } from '../data/portfolio'
+import { usePortfolioLanguage } from '../i18n'
+import { LanguageToggle } from './LanguageToggle'
 import { MacDesktop } from './MacDesktop'
 
 const FORWARD_VIDEO_URL = '/videos/macbook-work-scene-clean.mp4?v=20260518-clean4'
@@ -14,6 +15,7 @@ const LOCK_HUD_REVEAL_MS = 260
 const CLOSE_FRAME_DESKTOP_SCALE = 1.55
 const CLOSE_FRAME_MOBILE_SCALE = 2.22
 const MIN_LOADER_TIME = 450
+const INACTIVITY_START_MS = 5000
 const VIDEO_SOURCE_WIDTH = 4096
 const VIDEO_SOURCE_HEIGHT = 2024
 const CLOSE_FRAME_WIDTH = 2944
@@ -37,16 +39,19 @@ type MediaFrame = { height: number; left: number; top: number; width: number }
 type VideoSources = { forward: string; reverse: string }
 
 export function LaptopIntro() {
+  const { t } = usePortfolioLanguage()
   const forwardVideoRef = useRef<HTMLVideoElement>(null)
   const reverseVideoRef = useRef<HTMLVideoElement>(null)
   const closeFrameRef = useRef<HTMLImageElement>(null)
   const screenRef = useRef<HTMLDivElement>(null)
   const transitionTimeoutRef = useRef<number | null>(null)
   const hudRevealTimeoutRef = useRef<number | null>(null)
+  const startTimeoutRef = useRef<number | null>(null)
   const phaseRef = useRef<ScenePhase>('loading')
   const screenModeRef = useRef<ScreenMode>('hidden')
   const [phase, setPhase] = useState<ScenePhase>('loading')
   const [screenMode, setScreenMode] = useState<ScreenMode>('hidden')
+  const [awaitingStart, setAwaitingStart] = useState(false)
   const sources = useMemo(() => getVideoSources(), [])
 
   const setPhaseState = useCallback((nextPhase: ScenePhase) => {
@@ -68,6 +73,13 @@ export function LaptopIntro() {
     if (hudRevealTimeoutRef.current !== null) {
       window.clearTimeout(hudRevealTimeoutRef.current)
       hudRevealTimeoutRef.current = null
+    }
+  }, [])
+
+  const clearStartTimer = useCallback(() => {
+    if (startTimeoutRef.current !== null) {
+      window.clearTimeout(startTimeoutRef.current)
+      startTimeoutRef.current = null
     }
   }, [])
 
@@ -137,6 +149,8 @@ export function LaptopIntro() {
     }
 
     clearTransitionTimer()
+    clearStartTimer()
+    setAwaitingStart(false)
     reverseVideo?.pause()
     if (reverseVideo) {
       reverseVideo.currentTime = 0
@@ -154,7 +168,7 @@ export function LaptopIntro() {
     } catch {
       // User pointer/tap retries playback when autoplay is blocked.
     }
-  }, [clearTransitionTimer, setPhaseState, setScreenModeState, syncScreenToVideo])
+  }, [clearStartTimer, clearTransitionTimer, setPhaseState, setScreenModeState, syncScreenToVideo])
 
   const openDesktop = useCallback(() => {
     if (phaseRef.current !== 'locked') {
@@ -234,8 +248,18 @@ export function LaptopIntro() {
         return
       }
 
+      forwardElement.pause()
+      forwardElement.currentTime = 0
       syncScreenToVideo(forwardElement)
-      void playForward()
+      setScreenModeState('hidden')
+      setPhaseState('intro')
+      setAwaitingStart(true)
+      clearStartTimer()
+      startTimeoutRef.current = window.setTimeout(() => {
+        if (phaseRef.current === 'intro') {
+          void playForward()
+        }
+      }, INACTIVITY_START_MS)
     }
 
     function handleForwardEnded() {
@@ -281,11 +305,13 @@ export function LaptopIntro() {
     return () => {
       cancelled = true
       clearTransitionTimer()
+      clearStartTimer()
       forwardElement.removeEventListener('ended', handleForwardEnded)
       reverseElement.removeEventListener('ended', handleReverseEnded)
     }
   }, [
     clearTransitionTimer,
+    clearStartTimer,
     playForward,
     resetAfterReverse,
     setPhaseState,
@@ -315,7 +341,7 @@ export function LaptopIntro() {
 
   function handleScenePointerDown() {
     const forwardVideo = forwardVideoRef.current
-    if (!forwardVideo || phase !== 'intro' || !forwardVideo.paused || forwardVideo.currentTime > 0.12) {
+    if (!forwardVideo || phase !== 'intro' || (!awaitingStart && (!forwardVideo.paused || forwardVideo.currentTime > 0.12))) {
       return
     }
 
@@ -330,6 +356,7 @@ export function LaptopIntro() {
       className={`intro-scene is-${phase} ${screenIsActive ? 'has-screen-ui' : ''}`}
       aria-label="Cinematic MacBook intro"
     >
+      <LanguageToggle className="scene-language-toggle" />
       <div className="video-stage" onPointerDown={handleScenePointerDown} aria-hidden="true">
         <div className="video-layer">
           <video
@@ -357,8 +384,15 @@ export function LaptopIntro() {
       {phase === 'loading' ? (
         <div className="intro-loader" role="status" aria-live="polite">
           <span />
-          <strong>Loading scene</strong>
+          <strong>{t.ui.loadingScene}</strong>
         </div>
+      ) : null}
+
+      {phase === 'intro' && awaitingStart ? (
+        <button type="button" className="intro-start-prompt" onClick={handleScenePointerDown}>
+          <strong>{t.ui.clickEverywhere}</strong>
+          <span>{t.ui.autoStart}</span>
+        </button>
       ) : null}
 
       <div
@@ -369,11 +403,11 @@ export function LaptopIntro() {
         {screenMode === 'lock' ? (
           <div className="screen-content lock-screen-content">
             <img src={AVATAR_URL} alt="" />
-            <strong>{profile.name}</strong>
-            <span>Portfolio</span>
+            <strong>{t.profile.name}</strong>
+            <span>{t.ui.lockSubtitle}</span>
             {phase === 'locked' || phase === 'enteringLock' ? (
               <button type="button" className="lock-open-button" aria-disabled={phase !== 'locked'} onClick={openDesktop}>
-                Open
+                {t.ui.open}
               </button>
             ) : null}
           </div>

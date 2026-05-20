@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ComponentType, FormEvent, KeyboardEvent, ReactNode } from 'react'
 import {
   BriefcaseBusiness,
@@ -14,7 +14,9 @@ import {
   UserRound,
   UsersRound,
 } from 'lucide-react'
-import { about, profile, projects, skillGroups, terminalCommands } from '../data/portfolio'
+import type { PortfolioCopy } from '../data/portfolio'
+import { usePortfolioLanguage } from '../i18n'
+import { LanguageToggle } from './LanguageToggle'
 import { BerniRushFrame } from '../games/BerniRushFrame'
 import { BreakoutGame } from '../games/BreakoutGame'
 import { NeonRunnerGame } from '../games/NeonRunnerGame'
@@ -47,50 +49,63 @@ type DateOption = {
 const TIME_ZONE = 'Europe/Warsaw'
 const TIME_OPTIONS = ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30']
 
-const initialLines: Line[] = [
-  {
-    id: 1,
-    tone: 'system',
-    text: ['KACPER_OS terminal', 'Type "help" to see available commands.'],
-  },
-]
-
-const desktopApps: PanelApp[] = [
-  { id: 'projects', label: 'Projects', icon: FolderKanban, panel: 'projects' },
-  { id: 'about', label: 'About', icon: UserRound, panel: 'about' },
-  { id: 'games', label: 'Games', icon: Gamepad2, panel: 'games' },
-  { id: 'contact', label: 'Contact', icon: Mail, panel: 'contact' },
-]
-
-const dockPanelApps: PanelApp[] = [
-  { id: 'terminal', label: 'Terminal', icon: Terminal, panel: 'terminal' },
-  { id: 'calendar', label: 'Calendar', icon: CalendarDays, panel: 'calendar' },
-]
-
-const dockLinkApps: LinkApp[] = [
-  { id: 'github', label: 'GitHub', icon: GitBranch, href: profile.github },
-  { id: 'linkedin', label: 'LinkedIn', icon: UsersRound, href: profile.linkedin },
-  { id: 'portfolio', label: 'Static portfolio', icon: BriefcaseBusiness, href: profile.staticPortfolio },
-]
-
 type MacDesktopProps = {
   onShutdown?: () => void
 }
 
 export function MacDesktop({ onShutdown }: MacDesktopProps) {
+  const { lang, t } = usePortfolioLanguage()
+  const { about, profile, projects, skillGroups, terminalCommands } = t
+  const desktopApps = useMemo<PanelApp[]>(
+    () => [
+      { id: 'projects', label: t.ui.desktopApps.projects, icon: FolderKanban, panel: 'projects' },
+      { id: 'about', label: t.ui.desktopApps.about, icon: UserRound, panel: 'about' },
+      { id: 'games', label: t.ui.desktopApps.games, icon: Gamepad2, panel: 'games' },
+      { id: 'contact', label: t.ui.desktopApps.contact, icon: Mail, panel: 'contact' },
+    ],
+    [t],
+  )
+  const dockPanelApps = useMemo<PanelApp[]>(
+    () => [
+      { id: 'terminal', label: t.ui.dock.terminal, icon: Terminal, panel: 'terminal' },
+      { id: 'calendar', label: t.ui.dock.calendar, icon: CalendarDays, panel: 'calendar' },
+    ],
+    [t],
+  )
+  const dockLinkApps = useMemo<LinkApp[]>(
+    () => [
+      { id: 'github', label: t.ui.dock.github, icon: GitBranch, href: profile.github },
+      { id: 'linkedin', label: t.ui.dock.linkedin, icon: UsersRound, href: profile.linkedin },
+      { id: 'portfolio', label: t.ui.dock.portfolio, icon: BriefcaseBusiness, href: profile.staticPortfolio },
+    ],
+    [profile.github, profile.linkedin, profile.staticPortfolio, t],
+  )
   const [panel, setPanel] = useState<Panel>(null)
-  const [hovered, setHovered] = useState<string>('Kacper OS')
+  const [hovered, setHovered] = useState<string>(t.ui.osName)
   const [game, setGame] = useState<Game>(null)
   const [command, setCommand] = useState('')
   const [history, setHistory] = useState<string[]>([])
   const [historyIndex, setHistoryIndex] = useState<number | null>(null)
-  const [lines, setLines] = useState<Line[]>(initialLines)
+  const [lines, setLines] = useState<Line[]>(() => getInitialLines(t))
   const lineId = useRef(2)
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setHovered(t.ui.osName)
+      setLines(getInitialLines(t))
+      setHistory([])
+      setHistoryIndex(null)
+      setCommand('')
+      lineId.current = 2
+    }, 0)
+
+    return () => window.clearTimeout(timeout)
+  }, [lang, t])
 
   function openPanel(nextPanel: Exclude<Panel, null>) {
     setGame(null)
     setPanel(nextPanel)
-    setHovered(getPanelTitle(nextPanel))
+    setHovered(getPanelTitle(nextPanel, t))
   }
 
   function openExternal(url: string) {
@@ -126,7 +141,7 @@ export function MacDesktop({ onShutdown }: MacDesktopProps) {
     if (normalized === 'help') {
       appendLine(
         'output',
-        terminalCommands.map((item) => `${item} - ${describeCommand(item)}`),
+        terminalCommands.map((item) => `${item} - ${describeCommand(item, t)}`),
       )
       return
     }
@@ -157,65 +172,69 @@ export function MacDesktop({ onShutdown }: MacDesktopProps) {
 
     if (normalized === 'contact') {
       openPanel('contact')
-      appendLine('output', [`Portfolio contact form: ${profile.staticPortfolio}`, `GitHub: ${profile.github}`, `LinkedIn: ${profile.linkedin}`])
+      appendLine('output', [
+        `${t.ui.actions.portfolio}: ${profile.staticPortfolio}`,
+        `GitHub: ${profile.github}`,
+        `LinkedIn: ${profile.linkedin}`,
+      ])
       return
     }
 
     if (normalized === 'open github') {
       openExternal(profile.github)
-      appendLine('system', 'GitHub opened.')
+      appendLine('system', t.ui.commandMessages.github)
       return
     }
 
     if (normalized === 'open linkedin') {
       openExternal(profile.linkedin)
-      appendLine('system', 'LinkedIn opened.')
+      appendLine('system', t.ui.commandMessages.linkedin)
       return
     }
 
     if (normalized === 'open portfolio') {
       openExternal(profile.staticPortfolio)
-      appendLine('system', 'Static portfolio opened.')
+      appendLine('system', t.ui.commandMessages.portfolio)
       return
     }
 
     if (normalized === 'open calendar') {
       openPanel('calendar')
-      appendLine('system', 'Calendar opened.')
+      appendLine('system', t.ui.commandMessages.calendar)
       return
     }
 
     if (normalized === 'play snake') {
       openGame('snake')
-      appendLine('system', 'Snake launched.')
+      appendLine('system', t.ui.commandMessages.snake)
       return
     }
 
     if (normalized === 'play pong') {
       openGame('pong')
-      appendLine('system', 'Pong launched.')
+      appendLine('system', t.ui.commandMessages.pong)
       return
     }
 
     if (normalized === 'play breakout') {
       openGame('breakout')
-      appendLine('system', 'Breakout launched.')
+      appendLine('system', t.ui.commandMessages.breakout)
       return
     }
 
     if (normalized === 'play neon runner') {
       openGame('neon-runner')
-      appendLine('system', 'Neon Runner launched.')
+      appendLine('system', t.ui.commandMessages.neonRunner)
       return
     }
 
     if (normalized === 'berni rush') {
       openGame('berni-rush')
-      appendLine('system', 'Berni Rush launched.')
+      appendLine('system', t.ui.commandMessages.berniRush)
       return
     }
 
-    appendLine('error', `Unknown command: ${value}. Try "help".`)
+    appendLine('error', t.ui.unknownCommand(value))
   }
 
   function handleTerminalSubmit(event: FormEvent<HTMLFormElement>) {
@@ -252,19 +271,20 @@ export function MacDesktop({ onShutdown }: MacDesktopProps) {
   }
 
   return (
-    <section className="desktop-shell" aria-label="MacBook interactive desktop">
+    <section className="desktop-shell" aria-label={t.ui.ariaDesktop}>
       <div className="desktop-wallpaper">
         <div className="menu-bar">
           <div>
-            <span>Kacper OS</span>
+            <span>{t.ui.osName}</span>
           </div>
           <div className="menu-actions">
             <span>{profile.name}</span>
+            <LanguageToggle />
           </div>
         </div>
 
         <div className={`desktop-layout ${panel ? 'has-window' : 'is-wallpaper-only'}`}>
-          <div className="icon-grid" aria-label="Desktop icons">
+          <div className="icon-grid" aria-label={t.ui.desktopIcons}>
             {desktopApps.map((app) => {
               const Icon = app.icon
               return (
@@ -287,7 +307,7 @@ export function MacDesktop({ onShutdown }: MacDesktopProps) {
           <div className="desktop-center">
             {panel ? (
               <AppWindow
-                title={getPanelTitle(panel)}
+                title={getPanelTitle(panel, t)}
                 subtitle={hovered}
                 onClose={() => {
                   setGame(null)
@@ -314,7 +334,7 @@ export function MacDesktop({ onShutdown }: MacDesktopProps) {
           </div>
         </div>
 
-        <div className="dock" aria-label="Quick actions">
+        <div className="dock" aria-label={t.ui.quickActions}>
           {dockPanelApps.map((app) => {
             const Icon = app.icon
             return (
@@ -355,14 +375,14 @@ export function MacDesktop({ onShutdown }: MacDesktopProps) {
           {onShutdown ? (
             <button
               type="button"
-              aria-label="Shut down MacBook"
+              aria-label={t.ui.shutDown}
               onClick={onShutdown}
-              onFocus={() => setHovered('Shut down')}
-              onMouseEnter={() => setHovered('Shut down')}
+              onFocus={() => setHovered(t.ui.shutDown)}
+              onMouseEnter={() => setHovered(t.ui.shutDown)}
             >
               <Power size={22} />
               <span className="dock-tooltip" aria-hidden="true">
-                Shut down
+                {t.ui.shutDown}
               </span>
             </button>
           ) : null}
@@ -372,38 +392,22 @@ export function MacDesktop({ onShutdown }: MacDesktopProps) {
   )
 }
 
-function describeCommand(command: string) {
-  const descriptions: Record<string, string> = {
-    help: 'show commands',
-    about: 'open about',
-    projects: 'open projects',
-    skills: 'open skills',
-    contact: 'open contact',
-    'open github': 'open GitHub',
-    'open linkedin': 'open LinkedIn',
-    'open portfolio': 'open static portfolio',
-    'open calendar': 'open calendar',
-    'play snake': 'launch Snake',
-    'play pong': 'launch Pong',
-    'play breakout': 'launch Breakout',
-    'play neon runner': 'launch Neon Runner',
-    'berni rush': 'launch Berni Rush',
-    clear: 'clear terminal',
-  }
-  return descriptions[command] ?? 'run command'
+function getInitialLines(t: PortfolioCopy): Line[] {
+  return [
+    {
+      id: 1,
+      tone: 'system',
+      text: [...t.ui.terminalIntro],
+    },
+  ]
 }
 
-function getPanelTitle(panel: Exclude<Panel, null>) {
-  const labels: Record<Exclude<Panel, null>, string> = {
-    about: 'About me',
-    projects: 'Projects',
-    skills: 'Skills',
-    terminal: 'Terminal',
-    games: 'Games',
-    contact: 'Contact',
-    calendar: 'Book a meeting',
-  }
-  return labels[panel]
+function describeCommand(command: string, t: PortfolioCopy) {
+  return t.ui.commandDescriptions[command as keyof typeof t.ui.commandDescriptions] ?? 'run command'
+}
+
+function getPanelTitle(panel: Exclude<Panel, null>, t: PortfolioCopy) {
+  return t.ui.panelTitles[panel]
 }
 
 function getGameTitle(game: Exclude<Game, null>) {
@@ -428,11 +432,13 @@ function AppWindow({
   subtitle: string
   title: string
 }) {
+  const { t } = usePortfolioLanguage()
+
   return (
     <article className="app-window">
       <header>
         <div className="traffic">
-          <button type="button" aria-label="Close window" onClick={onClose}></button>
+          <button type="button" aria-label={t.ui.closeWindow} onClick={onClose}></button>
           <span></span>
           <span></span>
         </div>
@@ -447,6 +453,9 @@ function AppWindow({
 }
 
 function AboutPanel() {
+  const { t } = usePortfolioLanguage()
+  const { about, profile } = t
+
   return (
     <div className="panel-stack about-panel">
       <p className="eyebrow">{profile.title}</p>
@@ -455,20 +464,20 @@ function AboutPanel() {
         <p key={paragraph}>{paragraph}</p>
       ))}
       <div className="pill-row">
-        <span>Business-first</span>
-        <span>React</span>
-        <span>TypeScript</span>
-        <span>Web apps</span>
-        <span>CRM</span>
+        {t.ui.aboutPills.map((pill) => (
+          <span key={pill}>{pill}</span>
+        ))}
       </div>
     </div>
   )
 }
 
 function ProjectsPanel() {
+  const { t } = usePortfolioLanguage()
+
   return (
     <div className="project-list">
-      {projects.map((project) => (
+      {t.projects.map((project) => (
         <article key={project.id} className="project-item">
           <div>
             <h2>{project.title}</h2>
@@ -483,13 +492,13 @@ function ProjectsPanel() {
             {'liveUrl' in project && project.liveUrl ? (
               <a href={project.liveUrl} target="_blank" rel="noreferrer">
                 <ExternalLink size={16} />
-                Live
+                {t.ui.actions.live}
               </a>
             ) : null}
             {'repoUrl' in project && project.repoUrl ? (
               <a href={project.repoUrl} target="_blank" rel="noreferrer">
                 <GitBranch size={16} />
-                Repo
+                {t.ui.actions.repo}
               </a>
             ) : null}
           </div>
@@ -500,9 +509,11 @@ function ProjectsPanel() {
 }
 
 function SkillsPanel() {
+  const { t } = usePortfolioLanguage()
+
   return (
     <div className="skill-grid">
-      {skillGroups.map((group) => (
+      {t.skillGroups.map((group) => (
         <article key={group.title} className="skill-card">
           <h2>{group.title}</h2>
           <div className="pill-row">
@@ -517,12 +528,15 @@ function SkillsPanel() {
 }
 
 function ContactPanel({ onOpenCalendar }: { onOpenCalendar: () => void }) {
+  const { t } = usePortfolioLanguage()
+  const { profile } = t
+
   return (
     <div className="contact-grid">
       <ActionCard href={profile.github} icon={GitBranch} label="GitHub" value="ft4k696bk6-prog" />
       <ActionCard href={profile.linkedin} icon={UsersRound} label="LinkedIn" value="kacper-bernecki" />
-      <ActionCard href={profile.staticPortfolio} icon={BriefcaseBusiness} label="Portfolio" value="kacper-portfolio.vercel.app" />
-      <ActionButton icon={CalendarDays} label="Calendar" value="Wybierz termin" onClick={onOpenCalendar} />
+      <ActionCard href={profile.staticPortfolio} icon={BriefcaseBusiness} label={t.ui.actions.portfolio} value="kacper-portfolio.vercel.app" />
+      <ActionButton icon={CalendarDays} label={t.ui.actions.calendar} value={t.ui.actions.calendarValue} onClick={onOpenCalendar} />
     </div>
   )
 }
@@ -573,7 +587,9 @@ function ActionButton({
 }
 
 function CalendarPanel() {
-  const [dateOptions] = useState<DateOption[]>(() => buildDateOptions())
+  const { lang, t } = usePortfolioLanguage()
+  const { profile } = t
+  const dateOptions = useMemo(() => buildDateOptions(lang), [lang])
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [selectedTime, setSelectedTime] = useState<string | null>(null)
   const selectedOption = dateOptions.find((option) => option.value === selectedDate)
@@ -584,9 +600,9 @@ function CalendarPanel() {
     return (
       <div className="calendar-widget">
         <div>
-          <p className="eyebrow">Europe/Warsaw</p>
-          <h1>Umow spotkanie</h1>
-          <p>Wybierz dzien, ktory pasuje do krotkiej rozmowy o projekcie.</p>
+          <p className="eyebrow">{t.ui.calendar.timeZone}</p>
+          <h1>{t.ui.calendar.title}</h1>
+          <p>{t.ui.calendar.description}</p>
         </div>
         <div className="calendar-day-grid">
           {dateOptions.map((option) => (
@@ -607,11 +623,11 @@ function CalendarPanel() {
         <div className="calendar-toolbar">
           <div>
             <p className="eyebrow">{selectedOption?.fullLabel}</p>
-            <h1>Wybierz godzine</h1>
-            <p>Godziny sa podane dla strefy Europe/Warsaw.</p>
+            <h1>{t.ui.calendar.chooseTime}</h1>
+            <p>{t.ui.calendar.timeDescription}</p>
           </div>
           <button type="button" onClick={() => setSelectedDate(null)}>
-            Zmien dzien
+            {t.ui.calendar.changeDay}
           </button>
         </div>
         <div className="calendar-time-grid">
@@ -628,29 +644,29 @@ function CalendarPanel() {
   return (
     <div className="calendar-widget">
       <div>
-        <p className="eyebrow">Potwierdzenie</p>
-        <h1>Termin gotowy</h1>
+        <p className="eyebrow">{t.ui.calendar.confirmationEyebrow}</p>
+        <h1>{t.ui.calendar.confirmationTitle}</h1>
       </div>
       <div className="calendar-summary">
         <p>
-          <span>Dzien</span>
+          <span>{t.ui.calendar.day}</span>
           <strong>{selectedOption?.fullLabel}</strong>
         </p>
         <p>
-          <span>Godzina</span>
+          <span>{t.ui.calendar.time}</span>
           <strong>{selectedTime}</strong>
         </p>
       </div>
       <div className="calendar-actions">
         <a className="primary-link" href={confirmUrl} target="_blank" rel="noreferrer">
           <CalendarDays size={18} />
-          Potwierdz termin
+          {t.ui.calendar.confirm}
         </a>
         <button type="button" onClick={() => setSelectedTime(null)}>
-          Zmien godzine
+          {t.ui.calendar.changeTime}
         </button>
         <button type="button" onClick={() => setSelectedDate(null)}>
-          Zmien dzien
+          {t.ui.calendar.changeDay}
         </button>
       </div>
     </div>
@@ -658,13 +674,15 @@ function CalendarPanel() {
 }
 
 function GamesPanel({ game, setGame }: { game: Game; setGame: (game: Game) => void }) {
+  const { t } = usePortfolioLanguage()
+
   if (game) {
     return (
       <div className="game-panel game-focus-panel">
         <div className="game-header">
           <strong>{getGameTitle(game)}</strong>
           <button type="button" onClick={() => setGame(null)}>
-            Back
+            {t.ui.games.back}
           </button>
         </div>
         {game === 'snake' ? <SnakeGame /> : null}
@@ -678,11 +696,11 @@ function GamesPanel({ game, setGame }: { game: Game; setGame: (game: Game) => vo
 
   return (
     <div className="game-launcher">
-      <GameButton label="Berni Rush" description="Arena survival" icon={Sparkles} onClick={() => setGame('berni-rush')} />
-      <GameButton label="Neon Runner" description="Jump and dodge" icon={Sparkles} onClick={() => setGame('neon-runner')} />
-      <GameButton label="Snake" description="Classic grid" icon={Gamepad2} onClick={() => setGame('snake')} />
-      <GameButton label="Pong" description="Arcade duel" icon={Gamepad2} onClick={() => setGame('pong')} />
-      <GameButton label="Breakout" description="Brick chase" icon={Gamepad2} onClick={() => setGame('breakout')} />
+      <GameButton label="Berni Rush" description={t.ui.games.berniRush} icon={Sparkles} onClick={() => setGame('berni-rush')} />
+      <GameButton label="Neon Runner" description={t.ui.games.neonRunner} icon={Sparkles} onClick={() => setGame('neon-runner')} />
+      <GameButton label="Snake" description={t.ui.games.snake} icon={Gamepad2} onClick={() => setGame('snake')} />
+      <GameButton label="Pong" description={t.ui.games.pong} icon={Gamepad2} onClick={() => setGame('pong')} />
+      <GameButton label="Breakout" description={t.ui.games.breakout} icon={Gamepad2} onClick={() => setGame('breakout')} />
     </div>
   )
 }
@@ -720,6 +738,8 @@ function TerminalPanel({
   onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
 }) {
+  const { t } = usePortfolioLanguage()
+
   return (
     <div className="desktop-terminal">
       <div className="desktop-terminal-output">
@@ -735,7 +755,7 @@ function TerminalPanel({
         })}
       </div>
       <form onSubmit={onSubmit}>
-        <label htmlFor="desktop-terminal-input">kacper@macbook ~ %</label>
+        <label htmlFor="desktop-terminal-input">{t.ui.terminalPrompt}</label>
         <input
           id="desktop-terminal-input"
           value={command}
@@ -750,11 +770,12 @@ function TerminalPanel({
   )
 }
 
-function buildDateOptions() {
-  const dayFormatter = new Intl.DateTimeFormat('pl-PL', { day: '2-digit' })
-  const monthFormatter = new Intl.DateTimeFormat('pl-PL', { month: 'short' })
-  const weekdayFormatter = new Intl.DateTimeFormat('pl-PL', { weekday: 'short' })
-  const fullFormatter = new Intl.DateTimeFormat('pl-PL', {
+function buildDateOptions(lang: 'en' | 'pl') {
+  const locale = lang === 'pl' ? 'pl-PL' : 'en-US'
+  const dayFormatter = new Intl.DateTimeFormat(locale, { day: '2-digit' })
+  const monthFormatter = new Intl.DateTimeFormat(locale, { month: 'short' })
+  const weekdayFormatter = new Intl.DateTimeFormat(locale, { weekday: 'short' })
+  const fullFormatter = new Intl.DateTimeFormat(locale, {
     day: 'numeric',
     month: 'long',
     weekday: 'long',

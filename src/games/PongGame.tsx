@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
+import { usePortfolioLanguage } from '../i18n'
 
 const width = 720
 const height = 384
 const paddleHeight = 74
 
 export function PongGame() {
+  const { lang } = usePortfolioLanguage()
+  const isPl = lang === 'pl'
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const frameRef = useRef<number | null>(null)
   const playerY = useRef(height / 2 - paddleHeight / 2)
@@ -145,9 +148,9 @@ export function PongGame() {
     <div className="game-shell">
       <div className="game-meta">
         <span>
-          ai {score.ai} / player {score.player}
+          AI {score.ai} / {isPl ? 'gracz' : 'player'} {score.player}
         </span>
-        <span>W/S or arrows</span>
+        <span>{isPl ? 'W/S albo strzałki' : 'W/S or arrows'}</span>
       </div>
       <canvas ref={canvasRef} width={width} height={height} aria-label="Pong game" />
       <div className="game-controls game-controls-two" aria-label="Pong touch controls">
@@ -157,7 +160,7 @@ export function PongGame() {
           onPointerUp={() => setTouchInput('up', false)}
           onPointerLeave={() => setTouchInput('up', false)}
         >
-          up
+          {isPl ? 'góra' : 'up'}
         </button>
         <button
           type="button"
@@ -165,7 +168,7 @@ export function PongGame() {
           onPointerUp={() => setTouchInput('down', false)}
           onPointerLeave={() => setTouchInput('down', false)}
         >
-          down
+          {isPl ? 'dół' : 'down'}
         </button>
       </div>
     </div>
