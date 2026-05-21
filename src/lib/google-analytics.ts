@@ -6,9 +6,11 @@ declare global {
 }
 
 const DEFAULT_MEASUREMENT_ID = "G-QL1790GJ70";
+const DEFAULT_GOOGLE_TAG_ID = "GT-P85BP557";
 
 let initialized = false;
 let lastPagePath = "";
+let activeMeasurementId = "";
 
 function currentPagePath() {
   return `${window.location.pathname}${window.location.search}${window.location.hash}`;
@@ -22,6 +24,7 @@ function sendPageView() {
   lastPagePath = pagePath;
 
   window.gtag("event", "page_view", {
+    send_to: activeMeasurementId,
     page_title: document.title,
     page_location: window.location.href,
     page_path: pagePath,
@@ -43,9 +46,13 @@ function patchHistoryMethod(method: "pushState" | "replaceState") {
   } as History[typeof method];
 }
 
-export function initGoogleAnalytics(measurementId = DEFAULT_MEASUREMENT_ID) {
+export function initGoogleAnalytics(
+  measurementId = DEFAULT_MEASUREMENT_ID,
+  googleTagId = DEFAULT_GOOGLE_TAG_ID
+) {
   if (!measurementId || initialized) return;
   initialized = true;
+  activeMeasurementId = measurementId;
 
   window.dataLayer = window.dataLayer || [];
   window.gtag =
@@ -56,7 +63,7 @@ export function initGoogleAnalytics(measurementId = DEFAULT_MEASUREMENT_ID) {
 
   const script = document.createElement("script");
   script.async = true;
-  script.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(measurementId)}`;
+  script.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(googleTagId || measurementId)}`;
   document.head.appendChild(script);
 
   window.gtag("js", new Date());
