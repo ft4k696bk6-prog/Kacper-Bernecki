@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ComponentType, FormEvent, KeyboardEvent, ReactNode } from 'react'
 import {
+  Bot,
   BriefcaseBusiness,
   CalendarDays,
   ExternalLink,
@@ -9,12 +10,14 @@ import {
   GitBranch,
   Mail,
   Power,
+  Send,
   Sparkles,
   Terminal,
   UserRound,
   UsersRound,
 } from 'lucide-react'
-import type { PortfolioCopy } from '../data/portfolio'
+import { buildAiFallbackAnswer } from '../data/portfolio'
+import type { AiMessagePayload, PortfolioCopy } from '../data/portfolio'
 import { usePortfolioLanguage } from '../i18n'
 import { BerniRushFrame } from '../games/BerniRushFrame'
 import { BreakoutGame } from '../games/BreakoutGame'
@@ -22,9 +25,10 @@ import { NeonRunnerGame } from '../games/NeonRunnerGame'
 import { PongGame } from '../games/PongGame'
 import { SnakeGame } from '../games/SnakeGame'
 
-type Panel = 'about' | 'projects' | 'skills' | 'terminal' | 'games' | 'contact' | 'calendar' | null
+type Panel = 'about' | 'projects' | 'skills' | 'terminal' | 'games' | 'contact' | 'calendar' | 'ai' | null
 type Game = 'snake' | 'pong' | 'breakout' | 'berni-rush' | 'neon-runner' | null
 type Line = { id: number; tone: 'system' | 'input' | 'output' | 'error'; text: string | string[] }
+type ChatMessage = { id: number; role: 'assistant' | 'user'; content: string }
 type PanelApp = {
   id: string
   label: string
@@ -47,6 +51,7 @@ type DateOption = {
 
 const TIME_ZONE = 'Europe/Warsaw'
 const TIME_OPTIONS = ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30']
+const AI_ENDPOINT = '/api/ai-consultant'
 
 type MacDesktopProps = {
   onShutdown?: () => void
@@ -59,6 +64,7 @@ export function MacDesktop({ onShutdown }: MacDesktopProps) {
     () => [
       { id: 'projects', label: t.ui.desktopApps.projects, icon: FolderKanban, panel: 'projects' },
       { id: 'about', label: t.ui.desktopApps.about, icon: UserRound, panel: 'about' },
+      { id: 'ai', label: t.ui.desktopApps.ai, icon: Bot, panel: 'ai' },
       { id: 'games', label: t.ui.desktopApps.games, icon: Gamepad2, panel: 'games' },
       { id: 'contact', label: t.ui.desktopApps.contact, icon: Mail, panel: 'contact' },
     ],
@@ -67,6 +73,7 @@ export function MacDesktop({ onShutdown }: MacDesktopProps) {
   const dockPanelApps = useMemo<PanelApp[]>(
     () => [
       { id: 'terminal', label: t.ui.dock.terminal, icon: Terminal, panel: 'terminal' },
+      { id: 'ai', label: t.ui.dock.ai, icon: Bot, panel: 'ai' },
       { id: 'calendar', label: t.ui.dock.calendar, icon: CalendarDays, panel: 'calendar' },
     ],
     [t],
@@ -86,7 +93,11 @@ export function MacDesktop({ onShutdown }: MacDesktopProps) {
   const [history, setHistory] = useState<string[]>([])
   const [historyIndex, setHistoryIndex] = useState<number | null>(null)
   const [lines, setLines] = useState<Line[]>(() => getInitialLines(t))
+  const [aiMessages, setAiMessages] = useState<ChatMessage[]>(() => getInitialAiMessages(t))
+  const [aiInput, setAiInput] = useState('')
+  const [aiLoading, setAiLoading] = useState(false)
   const lineId = useRef(2)
+  const aiMessageId = useRef(2)
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -95,7 +106,10 @@ export function MacDesktop({ onShutdown }: MacDesktopProps) {
       setHistory([])
       setHistoryIndex(null)
       setCommand('')
+      setAiMessages(getInitialAiMessages(t))
+      setAiInput('')
       lineId.current = 2
+      aiMessageId.current = 2
     }, 0)
 
     return () => window.clearTimeout(timeout)
@@ -119,6 +133,32 @@ export function MacDesktop({ onShutdown }: MacDesktopProps) {
     setPanel('games')
     setGame(nextGame)
     setHovered(getGameTitle(nextGame))
+  }
+
+  async function askAi(raw: string) {
+    const value = raw.trim()
+    if (!value || aiLoading) {
+      return
+    }
+
+    const userMessage: ChatMessage = { id: aiMessageId.current++, role: 'user', content: value }
+    const nextMessages = [...aiMessages, userMessage]
+    setAiInput('')
+    setAiMessages(nextMessages)
+    setAiLoading(true)
+
+    const payloadMessages = toAiPayload(nextMessages)
+    const answer = await fetchAiAnswer(payloadMessages, lang)
+
+    setAiMessages((current) => [
+      ...current,
+      {
+        id: aiMessageId.current++,
+        role: 'assistant',
+        content: answer || t.ui.ai.error,
+      },
+    ])
+    setAiLoading(false)
   }
 
   function runCommand(raw: string) {
@@ -166,6 +206,12 @@ export function MacDesktop({ onShutdown }: MacDesktopProps) {
         'output',
         skillGroups.map((group) => `${group.title}: ${group.items.join(', ')}`),
       )
+      return
+    }
+
+    if (normalized === 'ai') {
+      openPanel('ai')
+      appendLine('system', t.ui.commandMessages.ai)
       return
     }
 
@@ -318,6 +364,16 @@ export function MacDesktop({ onShutdown }: MacDesktopProps) {
                 {panel === 'contact' ? <ContactPanel onOpenCalendar={() => openPanel('calendar')} /> : null}
                 {panel === 'calendar' ? <CalendarPanel /> : null}
                 {panel === 'games' ? <GamesPanel game={game} setGame={setGame} /> : null}
+                {panel === 'ai' ? (
+                  <AiPanel
+                    input={aiInput}
+                    loading={aiLoading}
+                    messages={aiMessages}
+                    onChange={setAiInput}
+                    onQuickPrompt={askAi}
+                    onSubmit={askAi}
+                  />
+                ) : null}
                 {panel === 'terminal' ? (
                   <TerminalPanel
                     command={command}
@@ -398,6 +454,47 @@ function getInitialLines(t: PortfolioCopy): Line[] {
       text: [...t.ui.terminalIntro],
     },
   ]
+}
+
+function getInitialAiMessages(t: PortfolioCopy): ChatMessage[] {
+  return [
+    {
+      id: 1,
+      role: 'assistant',
+      content: t.ui.ai.initialMessage,
+    },
+  ]
+}
+
+function toAiPayload(messages: ChatMessage[]): AiMessagePayload[] {
+  return messages.map((message) => ({
+    role: message.role,
+    content: message.content,
+  }))
+}
+
+async function fetchAiAnswer(messages: AiMessagePayload[], language: 'en' | 'pl') {
+  try {
+    const response = await fetch(AI_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        language,
+        messages: messages.slice(-8),
+      }),
+    })
+    const payload = (await response.json()) as { answer?: unknown }
+
+    if (response.ok && typeof payload.answer === 'string' && payload.answer.trim()) {
+      return payload.answer.trim()
+    }
+  } catch {
+    // Vite dev does not serve Vercel functions, so the desktop assistant falls back locally.
+  }
+
+  return buildAiFallbackAnswer(messages, language)
 }
 
 function describeCommand(command: string, t: PortfolioCopy) {
@@ -720,6 +817,76 @@ function GameButton({
       <strong>{label}</strong>
       <span>{description}</span>
     </button>
+  )
+}
+
+function AiPanel({
+  input,
+  loading,
+  messages,
+  onChange,
+  onQuickPrompt,
+  onSubmit,
+}: {
+  input: string
+  loading: boolean
+  messages: ChatMessage[]
+  onChange: (value: string) => void
+  onQuickPrompt: (value: string) => void
+  onSubmit: (value: string) => void
+}) {
+  const { t } = usePortfolioLanguage()
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    onSubmit(input)
+  }
+
+  return (
+    <div className="ai-panel">
+      <div className="ai-panel-header">
+        <div>
+          <p className="eyebrow">{t.ui.ai.subtitle}</p>
+          <h1>{t.ui.ai.title}</h1>
+        </div>
+        <Bot size={28} />
+      </div>
+
+      <div className="ai-chat-log" aria-live="polite">
+        {messages.map((message) => (
+          <div className={`ai-message is-${message.role}`} key={message.id}>
+            {message.content}
+          </div>
+        ))}
+        {loading ? (
+          <div className="ai-message is-assistant ai-thinking">
+            <span />
+            <span />
+            <span />
+          </div>
+        ) : null}
+      </div>
+
+      <div className="ai-quick-row">
+        {t.ui.ai.quickPrompts.map((prompt) => (
+          <button type="button" key={prompt} onClick={() => onQuickPrompt(prompt)} disabled={loading}>
+            {prompt}
+          </button>
+        ))}
+      </div>
+
+      <form className="ai-form" onSubmit={handleSubmit}>
+        <input
+          value={input}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={t.ui.ai.placeholder}
+          disabled={loading}
+        />
+        <button type="submit" aria-label={t.ui.ai.title} disabled={loading || !input.trim()}>
+          <Send size={18} />
+        </button>
+      </form>
+    </div>
   )
 }
 

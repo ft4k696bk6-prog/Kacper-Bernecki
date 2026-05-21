@@ -90,6 +90,7 @@ export const portfolioContent = {
       'about',
       'projects',
       'skills',
+      'ai',
       'contact',
       'open github',
       'open linkedin',
@@ -123,6 +124,7 @@ export const portfolioContent = {
         about: 'open about',
         projects: 'open projects',
         skills: 'open skills',
+        ai: 'open AI Kacper',
         contact: 'open contact',
         'open github': 'open GitHub',
         'open linkedin': 'open LinkedIn',
@@ -139,6 +141,7 @@ export const portfolioContent = {
         github: 'GitHub opened.',
         linkedin: 'LinkedIn opened.',
         portfolio: 'Main portfolio opened.',
+        ai: 'AI Kacper opened.',
         calendar: 'Calendar opened.',
         snake: 'Snake launched.',
         pong: 'Pong launched.',
@@ -151,6 +154,7 @@ export const portfolioContent = {
         projects: 'Projects',
         skills: 'Skills',
         terminal: 'Terminal',
+        ai: 'AI Kacper',
         games: 'Games',
         contact: 'Contact',
         calendar: 'Book a meeting',
@@ -158,11 +162,13 @@ export const portfolioContent = {
       desktopApps: {
         projects: 'Projects',
         about: 'About',
+        ai: 'AI Kacper',
         games: 'Games',
         contact: 'Contact',
       },
       dock: {
         terminal: 'Terminal',
+        ai: 'AI Kacper',
         calendar: 'Calendar',
         github: 'GitHub',
         linkedin: 'LinkedIn',
@@ -197,6 +203,15 @@ export const portfolioContent = {
         snake: 'Classic grid',
         pong: 'Arcade duel',
         breakout: 'Brick chase',
+      },
+      ai: {
+        title: 'AI Kacper',
+        subtitle: 'Portfolio copilot',
+        initialMessage:
+          'Hi, I am AI Kacper. Ask about projects, B-CRM, stack, contact or what to click first.',
+        placeholder: 'Ask AI Kacper...',
+        error: 'AI is warming up. Try again in a moment.',
+        quickPrompts: ['Best project?', 'What stack?', 'How to contact?', 'Open B-CRM?'],
       },
     },
   },
@@ -282,6 +297,7 @@ export const portfolioContent = {
       'about',
       'projects',
       'skills',
+      'ai',
       'contact',
       'open github',
       'open linkedin',
@@ -315,6 +331,7 @@ export const portfolioContent = {
         about: 'otwórz o mnie',
         projects: 'otwórz projekty',
         skills: 'otwórz umiejętności',
+        ai: 'otwórz AI Kacper',
         contact: 'otwórz kontakt',
         'open github': 'otwórz GitHub',
         'open linkedin': 'otwórz LinkedIn',
@@ -331,6 +348,7 @@ export const portfolioContent = {
         github: 'GitHub otwarty.',
         linkedin: 'LinkedIn otwarty.',
         portfolio: 'Główne portfolio otwarte.',
+        ai: 'AI Kacper otwarty.',
         calendar: 'Kalendarz otwarty.',
         snake: 'Snake uruchomiony.',
         pong: 'Pong uruchomiony.',
@@ -343,6 +361,7 @@ export const portfolioContent = {
         projects: 'Projekty',
         skills: 'Umiejętności',
         terminal: 'Terminal',
+        ai: 'AI Kacper',
         games: 'Gry',
         contact: 'Kontakt',
         calendar: 'Umów spotkanie',
@@ -350,11 +369,13 @@ export const portfolioContent = {
       desktopApps: {
         projects: 'Projekty',
         about: 'O mnie',
+        ai: 'AI Kacper',
         games: 'Gry',
         contact: 'Kontakt',
       },
       dock: {
         terminal: 'Terminal',
+        ai: 'AI Kacper',
         calendar: 'Kalendarz',
         github: 'GitHub',
         linkedin: 'LinkedIn',
@@ -390,10 +411,79 @@ export const portfolioContent = {
         pong: 'Pojedynek arcade',
         breakout: 'Rozbijanie bloków',
       },
+      ai: {
+        title: 'AI Kacper',
+        subtitle: 'Asystent portfolio',
+        initialMessage:
+          'Cześć, jestem AI Kacper. Zapytaj o projekty, B-CRM, stack, kontakt albo co kliknąć jako pierwsze.',
+        placeholder: 'Zapytaj AI Kacpra...',
+        error: 'AI się rozgrzewa. Spróbuj ponownie za moment.',
+        quickPrompts: ['Najlepszy projekt?', 'Jaki stack?', 'Jak się skontaktować?', 'Otworzyć B-CRM?'],
+      },
     },
   },
 } as const
 
 export type AppLanguage = keyof typeof portfolioContent
+export type Language = AppLanguage
 export type PortfolioCopy = (typeof portfolioContent)[AppLanguage]
 export type PortfolioProject = PortfolioCopy['projects'][number]
+export type AiMessagePayload = {
+  content: string
+  role: 'assistant' | 'user'
+}
+
+export function buildAiFallbackAnswer(messages: AiMessagePayload[], language: AppLanguage) {
+  const latestQuestion = [...messages].reverse().find((message) => message.role === 'user')?.content.trim() ?? ''
+  const normalized = normalizeForIntent(latestQuestion)
+  const isPolish = language === 'pl'
+
+  if (!latestQuestion) {
+    return portfolioContent[language].ui.ai.initialMessage
+  }
+
+  if (hasAny(normalized, ['b-crm', 'b crm', 'crm', 'lead', 'sales', 'sprzedaz', 'sprzedaż'])) {
+    return isPolish
+      ? 'B-CRM to najmocniejszy projekt do sprawdzenia: CRM z rolami, statusami leadów, komentarzami, callbackami, spotkaniami, panelem admina i danymi w Supabase/PostgreSQL. Najlepiej pokazuje praktyczne myślenie o procesie biznesowym.'
+      : 'B-CRM is the strongest project to review: a CRM with roles, lead statuses, comments, callbacks, meetings, an admin panel and Supabase/PostgreSQL-backed data. It best shows practical thinking around business workflow.'
+  }
+
+  if (hasAny(normalized, ['project', 'projects', 'portfolio', 'projek', 'realizac'])) {
+    return isPolish
+      ? 'Najlepsza ścieżka: B-CRM jako dowód techniczny, główne portfolio jako case studies i SEO/Next.js, Berni Rush jako gameplay/web game, a kalkulator leasingu i BerniNutri jako prototypy narzędzi biznesowych.'
+      : 'Best review path: B-CRM as the technical proof, the main portfolio for case studies and Next.js/SEO, Berni Rush for gameplay/web-game work, and the leasing calculator plus BerniNutri as business-tool prototypes.'
+  }
+
+  if (hasAny(normalized, ['stack', 'tech', 'technolog', 'typescript', 'react', 'next', 'supabase'])) {
+    return isPolish
+      ? 'Główny stack Kacpra to React, TypeScript, Next.js, Supabase/PostgreSQL, Tailwind CSS i Vercel. Używa go do CRM-ów, dashboardów, formularzy, integracji API i aplikacji wspierających procesy firmy.'
+      : "Kacper's core stack is React, TypeScript, Next.js, Supabase/PostgreSQL, Tailwind CSS and Vercel. He uses it for CRMs, dashboards, forms, API integrations and business workflow tools."
+  }
+
+  if (hasAny(normalized, ['contact', 'kontakt', 'email', 'phone', 'telefon', 'book', 'meeting', 'spotkanie'])) {
+    return isPolish
+      ? 'Najprościej: otwórz okno Kontakt albo Kalendarz na tym pulpicie. Główna strona ma też pełny formularz kontaktowy i chronione dane kontaktowe.'
+      : 'Simplest route: open Contact or Calendar on this desktop. The main portfolio also has a full contact flow and protected contact details.'
+  }
+
+  if (hasAny(normalized, ['open b-crm', 'otworz b-crm', 'otwórz b-crm', 'demo', 'live'])) {
+    return isPolish
+      ? 'Kliknij Projekty i przy B-CRM wybierz Demo. To najlepszy pierwszy klik, jeśli chcesz szybko ocenić praktyczny web app.'
+      : 'Open Projects and choose Live on B-CRM. That is the best first click if you want to quickly judge the practical web-app work.'
+  }
+
+  return isPolish
+    ? 'Mogę pomóc szybko ogarnąć portfolio: pytaj o B-CRM, projekty, stack, kontakt albo to, które okno warto otworzyć najpierw.'
+    : 'I can help you navigate the portfolio quickly: ask about B-CRM, projects, stack, contact, or which window is worth opening first.'
+}
+
+function normalizeForIntent(value: string) {
+  return value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+}
+
+function hasAny(value: string, terms: string[]) {
+  return terms.some((term) => value.includes(term))
+}
