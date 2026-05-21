@@ -1,40 +1,10 @@
-import { buildAiFallbackAnswer, type AiMessagePayload, type Language } from '../src/data/portfolio'
-
-type ApiRequest = {
-  body?: unknown
-  headers: Record<string, string | string[] | undefined>
-  method?: string
-  socket?: {
-    remoteAddress?: string
-  }
-}
-
-type ApiResponse = {
-  end: () => void
-  json: (payload: unknown) => void
-  setHeader: (name: string, value: string) => void
-  status: (code: number) => ApiResponse
-}
-
-type NvidiaChatResponse = {
-  choices?: Array<{
-    message?: {
-      content?: unknown
-    }
-  }>
-  error?: {
-    message?: string
-  }
-  message?: string
-}
-
 const DEFAULT_NVIDIA_API_BASE_URL = 'https://integrate.api.nvidia.com/v1'
 const DEFAULT_NVIDIA_MODEL = 'meta/llama-3.1-70b-instruct'
 const MAX_MESSAGE_LENGTH = 2200
 const MAX_MESSAGES = 8
-const rateLimit = new Map<string, { count: number; resetAt: number }>()
+const rateLimit = new Map()
 
-export default async function handler(request: ApiRequest, response: ApiResponse) {
+export default async function handler(request, response) {
   response.setHeader('Cache-Control', 'no-store')
 
   if (request.method === 'OPTIONS') {
@@ -89,7 +59,7 @@ export default async function handler(request: ApiRequest, response: ApiResponse
         stream: false,
       }),
     })
-    const result = (await aiResponse.json().catch(() => ({}))) as NvidiaChatResponse
+    const result = await aiResponse.json().catch(() => ({}))
 
     if (!aiResponse.ok) {
       response.status(aiResponse.status >= 400 && aiResponse.status < 600 ? aiResponse.status : 502).json({
@@ -115,47 +85,45 @@ export default async function handler(request: ApiRequest, response: ApiResponse
   }
 }
 
-function parsePayload(body: unknown): { language: Language; messages: AiMessagePayload[] } | null {
+function parsePayload(body) {
   const parsedBody = typeof body === 'string' ? parseJson(body) : body
   if (!parsedBody || typeof parsedBody !== 'object') {
     return null
   }
 
-  const candidate = parsedBody as { language?: unknown; messages?: unknown }
-  const language: Language = candidate.language === 'pl' ? 'pl' : 'en'
-  if (!Array.isArray(candidate.messages)) {
+  const language = parsedBody.language === 'pl' ? 'pl' : 'en'
+  if (!Array.isArray(parsedBody.messages)) {
     return null
   }
 
-  const messages = candidate.messages
+  const messages = parsedBody.messages
     .slice(-MAX_MESSAGES)
-    .map((message): AiMessagePayload | null => {
+    .map((message) => {
       if (!message || typeof message !== 'object') {
         return null
       }
 
-      const item = message as { content?: unknown; role?: unknown }
-      if ((item.role !== 'assistant' && item.role !== 'user') || typeof item.content !== 'string') {
+      if ((message.role !== 'assistant' && message.role !== 'user') || typeof message.content !== 'string') {
         return null
       }
 
-      const content = item.content.trim().slice(0, MAX_MESSAGE_LENGTH)
-      return content ? { role: item.role, content } : null
+      const content = message.content.trim().slice(0, MAX_MESSAGE_LENGTH)
+      return content ? { role: message.role, content } : null
     })
-    .filter((message): message is AiMessagePayload => Boolean(message))
+    .filter(Boolean)
 
   return messages.length ? { language, messages } : null
 }
 
-function parseJson(value: string) {
+function parseJson(value) {
   try {
-    return JSON.parse(value) as unknown
+    return JSON.parse(value)
   } catch {
     return null
   }
 }
 
-function clientIp(request: ApiRequest) {
+function clientIp(request) {
   const forwarded = request.headers['x-forwarded-for']
   if (Array.isArray(forwarded)) {
     return forwarded[0]?.split(',')[0]?.trim() || 'unknown'
@@ -164,7 +132,7 @@ function clientIp(request: ApiRequest) {
   return forwarded?.split(',')[0]?.trim() || request.socket?.remoteAddress || 'unknown'
 }
 
-function isRateLimited(ip: string) {
+function isRateLimited(ip) {
   const now = Date.now()
   const current = rateLimit.get(ip)
 
@@ -194,7 +162,7 @@ function getNvidiaModel() {
   return process.env.NVIDIA_MODEL?.trim() || DEFAULT_NVIDIA_MODEL
 }
 
-function normalizeNvidiaContent(content: unknown) {
+function normalizeNvidiaContent(content) {
   if (typeof content === 'string') {
     return content.trim()
   }
@@ -219,7 +187,58 @@ function normalizeNvidiaContent(content: unknown) {
   return ''
 }
 
-function buildSystemPrompt(language: Language) {
+function buildAiFallbackAnswer(messages, language) {
+  const latestQuestion = [...messages].reverse().find((message) => message.role === 'user')?.content.trim() ?? ''
+  const normalized = normalizeForIntent(latestQuestion)
+  const isPolish = language === 'pl'
+
+  if (!latestQuestion) {
+    return isPolish
+      ? 'Cześć, jestem AI Kacper. Zapytaj o projekty, B-CRM, stack, kontakt albo co kliknąć jako pierwsze.'
+      : 'Hi, I am AI Kacper. Ask about projects, B-CRM, stack, contact or what to click first.'
+  }
+
+  if (hasAny(normalized, ['b-crm', 'b crm', 'crm', 'lead', 'sales', 'sprzedaz', 'sprzedaż'])) {
+    return isPolish
+      ? 'B-CRM to najmocniejszy projekt do sprawdzenia: CRM z rolami, statusami leadów, komentarzami, callbackami, spotkaniami, panelem admina i danymi w Supabase/PostgreSQL.'
+      : 'B-CRM is the strongest project to review: a CRM with roles, lead statuses, comments, callbacks, meetings, an admin panel and Supabase/PostgreSQL-backed data.'
+  }
+
+  if (hasAny(normalized, ['project', 'projects', 'portfolio', 'projek', 'realizac'])) {
+    return isPolish
+      ? 'Najlepsza ścieżka: B-CRM jako dowód techniczny, główne portfolio jako case studies i SEO/Next.js, Berni Rush jako gameplay/web game, a kalkulator leasingu i BerniNutri jako prototypy narzędzi biznesowych.'
+      : 'Best review path: B-CRM as the technical proof, the main portfolio for case studies and Next.js/SEO, Berni Rush for gameplay/web-game work, and the leasing calculator plus BerniNutri as business-tool prototypes.'
+  }
+
+  if (hasAny(normalized, ['stack', 'tech', 'technolog', 'typescript', 'react', 'next', 'supabase'])) {
+    return isPolish
+      ? 'Główny stack Kacpra to React, TypeScript, Next.js, Supabase/PostgreSQL, Tailwind CSS i Vercel.'
+      : "Kacper's core stack is React, TypeScript, Next.js, Supabase/PostgreSQL, Tailwind CSS and Vercel."
+  }
+
+  if (hasAny(normalized, ['contact', 'kontakt', 'email', 'phone', 'telefon', 'book', 'meeting', 'spotkanie'])) {
+    return isPolish
+      ? 'Najprościej: otwórz okno Kontakt albo Kalendarz na tym pulpicie. Główna strona ma też pełny formularz kontaktowy i chronione dane kontaktowe.'
+      : 'Simplest route: open Contact or Calendar on this desktop. The main portfolio also has a full contact flow and protected contact details.'
+  }
+
+  return isPolish
+    ? 'Mogę pomóc szybko ogarnąć portfolio: pytaj o B-CRM, projekty, stack, kontakt albo to, które okno warto otworzyć najpierw.'
+    : 'I can help you navigate the portfolio quickly: ask about B-CRM, projects, stack, contact, or which window is worth opening first.'
+}
+
+function normalizeForIntent(value) {
+  return value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+}
+
+function hasAny(value, terms) {
+  return terms.some((term) => value.includes(term))
+}
+
+function buildSystemPrompt(language) {
   const responseLanguage =
     language === 'pl'
       ? 'Answer in Polish unless the user clearly asks for English.'
