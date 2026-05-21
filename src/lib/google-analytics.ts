@@ -5,6 +5,8 @@ declare global {
   }
 }
 
+const DEFAULT_MEASUREMENT_ID = "G-QL1790GJ70";
+
 let initialized = false;
 let lastPagePath = "";
 
@@ -41,7 +43,7 @@ function patchHistoryMethod(method: "pushState" | "replaceState") {
   } as History[typeof method];
 }
 
-export function initGoogleAnalytics(measurementId?: string) {
+export function initGoogleAnalytics(measurementId = DEFAULT_MEASUREMENT_ID) {
   if (!measurementId || initialized) return;
   initialized = true;
 
