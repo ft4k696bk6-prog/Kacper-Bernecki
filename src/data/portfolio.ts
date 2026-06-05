@@ -25,11 +25,12 @@ export const portfolioContent = {
     projects: [
       {
         id: 'b-crm',
-        title: 'B-CRM - CRM application',
+        title: 'B-CRM DEMO - CRM application',
         description:
-          'CRM for sales teams: leads, roles, statuses, comments, callbacks, meetings and admin panel.',
+          'Portfolio CRM demo for sales teams: leads, roles, statuses, comments, callbacks, meetings and admin panel.',
         stack: ['React', 'TypeScript', 'Next.js', 'Supabase', 'PostgreSQL', 'Tailwind CSS', 'Vercel'],
-        liveUrl: 'https://b-crm-berni.vercel.app/login',
+        credentials: ['Admin: demo / demo', 'Sales: demo-handlowiec / demo', 'Manager: demo-menadzer / demo'],
+        liveUrl: 'https://b-crm-demo-berni.vercel.app/login',
         repoUrl: 'https://github.com/ft4k696bk6-prog/B-CRM',
       },
       {
@@ -62,7 +63,7 @@ export const portfolioContent = {
         id: 'static-portfolio',
         title: 'Main portfolio',
         description:
-          'Main developer portfolio with B-CRM case study, technical reviewer section, project cards and protected contact reveal.',
+          'Main developer portfolio with B-CRM DEMO case study, technical reviewer section, project cards and protected contact reveal.',
         stack: ['Next.js', 'TypeScript', 'Tailwind CSS', 'Vercel'],
         liveUrl: sharedLinks.staticPortfolio,
       },
@@ -208,10 +209,10 @@ export const portfolioContent = {
         title: 'AI Kacper',
         subtitle: 'Portfolio copilot',
         initialMessage:
-          'Hi, I am AI Kacper. Ask about projects, B-CRM, stack, contact or what to click first.',
+          'Hi, I am AI Kacper. Ask about projects, B-CRM DEMO, stack, contact or what to click first.',
         placeholder: 'Ask AI Kacper...',
         error: 'AI is warming up. Try again in a moment.',
-        quickPrompts: ['Best project?', 'What stack?', 'How to contact?', 'Open B-CRM?'],
+        quickPrompts: ['Best project?', 'What stack?', 'How to contact?', 'Open B-CRM DEMO?'],
       },
     },
   },
@@ -232,11 +233,12 @@ export const portfolioContent = {
     projects: [
       {
         id: 'b-crm',
-        title: 'B-CRM - aplikacja CRM',
+        title: 'B-CRM DEMO - aplikacja CRM',
         description:
-          'CRM dla zespołów sprzedażowych: leady, role, statusy, komentarze, callbacki, spotkania i panel administracyjny.',
+          'Demo portfolio CRM dla zespołów sprzedażowych: leady, role, statusy, komentarze, callbacki, spotkania i panel administracyjny.',
         stack: ['React', 'TypeScript', 'Next.js', 'Supabase', 'PostgreSQL', 'Tailwind CSS', 'Vercel'],
-        liveUrl: 'https://b-crm-berni.vercel.app/login',
+        credentials: ['Admin: demo / demo', 'Handlowiec: demo-handlowiec / demo', 'Menadżer: demo-menadzer / demo'],
+        liveUrl: 'https://b-crm-demo-berni.vercel.app/login',
         repoUrl: 'https://github.com/ft4k696bk6-prog/B-CRM',
       },
       {
@@ -269,7 +271,7 @@ export const portfolioContent = {
         id: 'static-portfolio',
         title: 'Główne portfolio',
         description:
-          'Główne portfolio z case study B-CRM, sekcją dla osób technicznych, kartami projektów i chronionym odsłanianiem kontaktu.',
+          'Główne portfolio z case study B-CRM DEMO, sekcją dla osób technicznych, kartami projektów i chronionym odsłanianiem kontaktu.',
         stack: ['Next.js', 'TypeScript', 'Tailwind CSS', 'Vercel'],
         liveUrl: sharedLinks.staticPortfolio,
       },
@@ -415,10 +417,10 @@ export const portfolioContent = {
         title: 'AI Kacper',
         subtitle: 'Asystent portfolio',
         initialMessage:
-          'Cześć, jestem AI Kacper. Zapytaj o projekty, B-CRM, stack, kontakt albo co kliknąć jako pierwsze.',
+          'Cześć, jestem AI Kacper. Zapytaj o projekty, B-CRM DEMO, stack, kontakt albo co kliknąć jako pierwsze.',
         placeholder: 'Zapytaj AI Kacpra...',
         error: 'AI się rozgrzewa. Spróbuj ponownie za moment.',
-        quickPrompts: ['Najlepszy projekt?', 'Jaki stack?', 'Jak się skontaktować?', 'Otworzyć B-CRM?'],
+        quickPrompts: ['Najlepszy projekt?', 'Jaki stack?', 'Jak się skontaktować?', 'Otworzyć B-CRM DEMO?'],
       },
     },
   },
@@ -444,14 +446,14 @@ export function buildAiFallbackAnswer(messages: AiMessagePayload[], language: Ap
 
   if (hasAny(normalized, ['b-crm', 'b crm', 'crm', 'lead', 'sales', 'sprzedaz', 'sprzedaż'])) {
     return isPolish
-      ? 'B-CRM to najmocniejszy projekt do sprawdzenia: CRM z rolami, statusami leadów, komentarzami, callbackami, spotkaniami, panelem admina i danymi w Supabase/PostgreSQL. Najlepiej pokazuje praktyczne myślenie o procesie biznesowym.'
-      : 'B-CRM is the strongest project to review: a CRM with roles, lead statuses, comments, callbacks, meetings, an admin panel and Supabase/PostgreSQL-backed data. It best shows practical thinking around business workflow.'
+      ? 'B-CRM DEMO to najmocniejszy projekt do sprawdzenia: demo CRM z rolami, statusami leadów, komentarzami, callbackami, spotkaniami i panelem admina. Na ekranie logowania są konta demo, np. demo / demo, demo-handlowiec / demo i demo-menadzer / demo.'
+      : 'B-CRM DEMO is the strongest project to review: a CRM demo with roles, lead statuses, comments, callbacks, meetings and an admin panel. The login screen shows demo accounts, including demo / demo, demo-handlowiec / demo and demo-menadzer / demo.'
   }
 
   if (hasAny(normalized, ['project', 'projects', 'portfolio', 'projek', 'realizac'])) {
     return isPolish
-      ? 'Najlepsza ścieżka: B-CRM jako dowód techniczny, główne portfolio jako case studies i SEO/Next.js, Berni Rush jako gameplay/web game, a kalkulator leasingu i BerniNutri jako prototypy narzędzi biznesowych.'
-      : 'Best review path: B-CRM as the technical proof, the main portfolio for case studies and Next.js/SEO, Berni Rush for gameplay/web-game work, and the leasing calculator plus BerniNutri as business-tool prototypes.'
+      ? 'Najlepsza ścieżka: B-CRM DEMO jako dowód techniczny, główne portfolio jako case studies i SEO/Next.js, Berni Rush jako gameplay/web game, a kalkulator leasingu i BerniNutri jako prototypy narzędzi biznesowych.'
+      : 'Best review path: B-CRM DEMO as the technical proof, the main portfolio for case studies and Next.js/SEO, Berni Rush for gameplay/web-game work, and the leasing calculator plus BerniNutri as business-tool prototypes.'
   }
 
   if (hasAny(normalized, ['stack', 'tech', 'technolog', 'typescript', 'react', 'next', 'supabase'])) {
@@ -468,13 +470,13 @@ export function buildAiFallbackAnswer(messages: AiMessagePayload[], language: Ap
 
   if (hasAny(normalized, ['open b-crm', 'otworz b-crm', 'otwórz b-crm', 'demo', 'live'])) {
     return isPolish
-      ? 'Kliknij Projekty i przy B-CRM wybierz Demo. To najlepszy pierwszy klik, jeśli chcesz szybko ocenić praktyczny web app.'
-      : 'Open Projects and choose Live on B-CRM. That is the best first click if you want to quickly judge the practical web-app work.'
+      ? 'Kliknij Projekty i przy B-CRM DEMO wybierz Demo. To najlepszy pierwszy klik, jeśli chcesz szybko ocenić praktyczny web app.'
+      : 'Open Projects and choose Live on B-CRM DEMO. That is the best first click if you want to quickly judge the practical web-app work.'
   }
 
   return isPolish
-    ? 'Mogę pomóc szybko ogarnąć portfolio: pytaj o B-CRM, projekty, stack, kontakt albo to, które okno warto otworzyć najpierw.'
-    : 'I can help you navigate the portfolio quickly: ask about B-CRM, projects, stack, contact, or which window is worth opening first.'
+    ? 'Mogę pomóc szybko ogarnąć portfolio: pytaj o B-CRM DEMO, projekty, stack, kontakt albo to, które okno warto otworzyć najpierw.'
+    : 'I can help you navigate the portfolio quickly: ask about B-CRM DEMO, projects, stack, contact, or which window is worth opening first.'
 }
 
 function normalizeForIntent(value: string) {

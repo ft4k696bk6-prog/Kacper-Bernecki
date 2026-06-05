@@ -584,6 +584,18 @@
   font-size: 0.48rem;
 }
 
+.laptop-screen-ui .credential-row {
+  gap: 4px;
+  margin-top: 5px;
+}
+
+.laptop-screen-ui .credential-row span {
+  min-height: 16px;
+  padding: 0 5px;
+  border-radius: 4px;
+  font-size: 0.42rem;
+}
+
 .laptop-screen-ui .action-row {
   min-width: 0;
   flex-direction: row;
@@ -1108,6 +1120,27 @@ button.action-card {
   color: #f0d9ad;
   background: rgba(212, 181, 126, 0.08);
   font-size: 0.76rem;
+}
+
+.credential-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.credential-row span {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  padding: 0 9px;
+  border: 1px solid rgba(121, 214, 190, 0.18);
+  border-radius: 6px;
+  color: rgba(208, 255, 242, 0.86);
+  background: rgba(45, 177, 144, 0.1);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  line-height: 1;
 }
 
 .action-row {

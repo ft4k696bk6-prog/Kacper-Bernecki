@@ -194,20 +194,20 @@ function buildAiFallbackAnswer(messages, language) {
 
   if (!latestQuestion) {
     return isPolish
-      ? 'Cześć, jestem AI Kacper. Zapytaj o projekty, B-CRM, stack, kontakt albo co kliknąć jako pierwsze.'
-      : 'Hi, I am AI Kacper. Ask about projects, B-CRM, stack, contact or what to click first.'
+      ? 'Cześć, jestem AI Kacper. Zapytaj o projekty, B-CRM DEMO, stack, kontakt albo co kliknąć jako pierwsze.'
+      : 'Hi, I am AI Kacper. Ask about projects, B-CRM DEMO, stack, contact or what to click first.'
   }
 
   if (hasAny(normalized, ['b-crm', 'b crm', 'crm', 'lead', 'sales', 'sprzedaz', 'sprzedaż'])) {
     return isPolish
-      ? 'B-CRM to najmocniejszy projekt do sprawdzenia: CRM z rolami, statusami leadów, komentarzami, callbackami, spotkaniami, panelem admina i danymi w Supabase/PostgreSQL.'
-      : 'B-CRM is the strongest project to review: a CRM with roles, lead statuses, comments, callbacks, meetings, an admin panel and Supabase/PostgreSQL-backed data.'
+      ? 'B-CRM DEMO to najmocniejszy projekt do sprawdzenia: demo CRM z rolami, statusami leadów, komentarzami, callbackami, spotkaniami i panelem admina. Na ekranie logowania są konta demo: demo / demo, demo-handlowiec / demo i demo-menadzer / demo.'
+      : 'B-CRM DEMO is the strongest project to review: a CRM demo with roles, lead statuses, comments, callbacks, meetings and an admin panel. The login screen shows demo accounts: demo / demo, demo-handlowiec / demo and demo-menadzer / demo.'
   }
 
   if (hasAny(normalized, ['project', 'projects', 'portfolio', 'projek', 'realizac'])) {
     return isPolish
-      ? 'Najlepsza ścieżka: B-CRM jako dowód techniczny, główne portfolio jako case studies i SEO/Next.js, Berni Rush jako gameplay/web game, a kalkulator leasingu i BerniNutri jako prototypy narzędzi biznesowych.'
-      : 'Best review path: B-CRM as the technical proof, the main portfolio for case studies and Next.js/SEO, Berni Rush for gameplay/web-game work, and the leasing calculator plus BerniNutri as business-tool prototypes.'
+      ? 'Najlepsza ścieżka: B-CRM DEMO jako dowód techniczny, główne portfolio jako case studies i SEO/Next.js, Berni Rush jako gameplay/web game, a kalkulator leasingu i BerniNutri jako prototypy narzędzi biznesowych.'
+      : 'Best review path: B-CRM DEMO as the technical proof, the main portfolio for case studies and Next.js/SEO, Berni Rush for gameplay/web-game work, and the leasing calculator plus BerniNutri as business-tool prototypes.'
   }
 
   if (hasAny(normalized, ['stack', 'tech', 'technolog', 'typescript', 'react', 'next', 'supabase'])) {
@@ -223,8 +223,8 @@ function buildAiFallbackAnswer(messages, language) {
   }
 
   return isPolish
-    ? 'Mogę pomóc szybko ogarnąć portfolio: pytaj o B-CRM, projekty, stack, kontakt albo to, które okno warto otworzyć najpierw.'
-    : 'I can help you navigate the portfolio quickly: ask about B-CRM, projects, stack, contact, or which window is worth opening first.'
+    ? 'Mogę pomóc szybko ogarnąć portfolio: pytaj o B-CRM DEMO, projekty, stack, kontakt albo to, które okno warto otworzyć najpierw.'
+    : 'I can help you navigate the portfolio quickly: ask about B-CRM DEMO, projects, stack, contact, or which window is worth opening first.'
 }
 
 function normalizeForIntent(value) {
@@ -251,7 +251,7 @@ ${responseLanguage}
 Use only this portfolio context:
 - Kacper is a Frontend Developer focused on React, TypeScript, Next.js, Supabase/PostgreSQL, Tailwind CSS and Vercel.
 - He builds practical business web apps: CRMs, dashboards, forms, lead flows, workflow tools and API integrations.
-- B-CRM is the strongest technical proof: lead management, roles, statuses, comments, callbacks, meetings, admin panel and Supabase/PostgreSQL data.
+- B-CRM DEMO is the strongest technical proof: lead management, roles, statuses, comments, callbacks, meetings, admin panel and visible demo accounts on the login screen.
 - Other projects include Berni Rush, BerniNutri AI, a leasing calculator and the main static portfolio with case studies.
 - For contact, point users to the Contact or Calendar app on this desktop or the main portfolio contact section.
 

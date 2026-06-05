@@ -582,6 +582,13 @@ function ProjectsPanel() {
                 <span key={item}>{item}</span>
               ))}
             </div>
+            {'credentials' in project && project.credentials ? (
+              <div className="credential-row" aria-label="Demo login accounts">
+                {project.credentials.map((item) => (
+                  <span key={item}>{item}</span>
+                ))}
+              </div>
+            ) : null}
           </div>
           <div className="action-row">
             {'liveUrl' in project && project.liveUrl ? (
