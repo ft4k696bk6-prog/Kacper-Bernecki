@@ -603,6 +603,12 @@ function ProjectsPanel() {
                 {t.ui.actions.repo}
               </a>
             ) : null}
+            {'caseStudyUrl' in project && project.caseStudyUrl ? (
+              <a href={project.caseStudyUrl} target="_blank" rel="noreferrer">
+                <ExternalLink size={16} />
+                {t.ui.actions.caseStudy}
+              </a>
+            ) : null}
           </div>
         </article>
       ))}

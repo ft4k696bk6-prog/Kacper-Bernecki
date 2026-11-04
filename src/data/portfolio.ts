@@ -1,7 +1,7 @@
 export const sharedLinks = {
   github: 'https://github.com/ft4k696bk6-prog',
   linkedin: 'https://www.linkedin.com/in/kacper-bernecki/',
-  staticPortfolio: 'https://kacper-portfolio.vercel.app',
+  staticPortfolio: 'https://bernecki.dev',
   calendar: 'https://cal.com/kacper-bernecki/schedule-meeting',
   newPortfolio: 'https://kacper-bernecki.vercel.app',
   berniRushUrl: 'https://bernirushdemooo.vercel.app',
@@ -30,8 +30,32 @@ export const portfolioContent = {
           'Portfolio CRM demo for sales teams: leads, roles, statuses, comments, callbacks, meetings and admin panel.',
         stack: ['React', 'TypeScript', 'Next.js', 'Supabase', 'PostgreSQL', 'Tailwind CSS', 'Vercel'],
         credentials: ['Admin: demo / demo', 'Sales: demo-handlowiec / demo', 'Manager: demo-menadzer / demo'],
-        liveUrl: 'https://b-crm-demo-berni.vercel.app/login',
+        liveUrl: 'https://demo-crm.bernecki.dev/login',
         repoUrl: 'https://github.com/ft4k696bk6-prog/B-CRM',
+      },
+      {
+        id: 'motomizer',
+        title: 'Motomizer — product landing',
+        description: 'Bilingual product website for a car-shaped aroma diffuser: colour variants, swipe galleries, LED/REV feature presentation and availability enquiries.',
+        stack: ['HTML', 'CSS', 'JavaScript', 'Vercel'],
+        liveUrl: 'https://motomizer.pl',
+        caseStudyUrl: 'https://bernecki.dev/case-studies/motomizer',
+      },
+      {
+        id: 'starcars',
+        title: 'StarCars Import — automotive website',
+        description: 'Interactive US/Canada car import website with landed-cost calculator, multi-step service explanation, visual storytelling and enquiry forms.',
+        stack: ['React', 'TypeScript', 'Vite', 'Three.js', 'GSAP', 'Vercel'],
+        liveUrl: 'https://star-cars.us',
+        caseStudyUrl: 'https://bernecki.dev/case-studies/starcars',
+      },
+      {
+        id: 'beatmarket',
+        title: 'BeatMarket — music marketplace',
+        description: 'Developing beat marketplace featuring catalog filters, audio previews, producer submissions, moderation and licensing workflows.',
+        stack: ['Next.js', 'React', 'Supabase', 'PostgreSQL', 'Vercel'],
+        liveUrl: 'https://beatmarket.bernecki.dev',
+        caseStudyUrl: 'https://bernecki.dev/case-studies/beatmarket',
       },
       {
         id: 'berni-rush',
@@ -49,15 +73,6 @@ export const portfolioContent = {
         stack: ['React', 'TypeScript', 'Vite', 'Hono', 'Drizzle', 'Vercel'],
         liveUrl: 'https://kalkulatorleasingu-7484-main.vercel.app',
         repoUrl: 'https://github.com/ft4k696bk6-prog/kalkulator.leasingu-1',
-      },
-      {
-        id: 'berninutri-ai',
-        title: 'BerniNutri AI',
-        description:
-          'Mobile web app prototype for meal photo analysis, calorie and macro estimates, and daily local history.',
-        stack: ['React', 'TypeScript', 'Vite', 'OpenAI API', 'LocalStorage', 'Vercel'],
-        liveUrl: 'https://berninutri-portfolio.vercel.app',
-        repoUrl: 'https://github.com/ft4k696bk6-prog/berninutri-portfolio',
       },
       {
         id: 'static-portfolio',
@@ -179,6 +194,7 @@ export const portfolioContent = {
       actions: {
         live: 'Live',
         repo: 'Repo',
+        caseStudy: 'Case study',
         portfolio: 'Portfolio',
         calendar: 'Calendar',
         calendarValue: 'Choose a time',
@@ -238,8 +254,32 @@ export const portfolioContent = {
           'Demo portfolio CRM dla zespołów sprzedażowych: leady, role, statusy, komentarze, callbacki, spotkania i panel administracyjny.',
         stack: ['React', 'TypeScript', 'Next.js', 'Supabase', 'PostgreSQL', 'Tailwind CSS', 'Vercel'],
         credentials: ['Admin: demo / demo', 'Handlowiec: demo-handlowiec / demo', 'Menadżer: demo-menadzer / demo'],
-        liveUrl: 'https://b-crm-demo-berni.vercel.app/login',
+        liveUrl: 'https://demo-crm.bernecki.dev/login',
         repoUrl: 'https://github.com/ft4k696bk6-prog/B-CRM',
+      },
+      {
+        id: 'motomizer',
+        title: 'Motomizer — witryna produktowa',
+        description: 'Dwujęzyczna strona aromatyzera w formie auta: warianty kolorystyczne, galerie z gestami, prezentacja funkcji LED/REV i formularz dostępności.',
+        stack: ['HTML', 'CSS', 'JavaScript', 'Vercel'],
+        liveUrl: 'https://motomizer.pl',
+        caseStudyUrl: 'https://bernecki.dev/case-studies/motomizer',
+      },
+      {
+        id: 'starcars',
+        title: 'StarCars Import — strona motoryzacyjna',
+        description: 'Witryna importu aut z USA i Kanady z kalkulatorem kosztów, opisem procesu, efektowną oprawą wizualną i formularzem zapytania.',
+        stack: ['React', 'TypeScript', 'Vite', 'Three.js', 'GSAP', 'Vercel'],
+        liveUrl: 'https://star-cars.us',
+        caseStudyUrl: 'https://bernecki.dev/case-studies/starcars',
+      },
+      {
+        id: 'beatmarket',
+        title: 'BeatMarket — marketplace muzyczny',
+        description: 'Rozwijany marketplace beatów z filtrowaniem katalogu, podglądem audio, zgłoszeniami producentów, moderacją i ścieżką licencji.',
+        stack: ['Next.js', 'React', 'Supabase', 'PostgreSQL', 'Vercel'],
+        liveUrl: 'https://beatmarket.bernecki.dev',
+        caseStudyUrl: 'https://bernecki.dev/case-studies/beatmarket',
       },
       {
         id: 'berni-rush',
@@ -257,15 +297,6 @@ export const portfolioContent = {
         stack: ['React', 'TypeScript', 'Vite', 'Hono', 'Drizzle', 'Vercel'],
         liveUrl: 'https://kalkulatorleasingu-7484-main.vercel.app',
         repoUrl: 'https://github.com/ft4k696bk6-prog/kalkulator.leasingu-1',
-      },
-      {
-        id: 'berninutri-ai',
-        title: 'BerniNutri AI',
-        description:
-          'Mobilna aplikacja webowa do analizy zdjęć posiłków, szacowania kalorii i makro oraz zapisu dziennej historii.',
-        stack: ['React', 'TypeScript', 'Vite', 'OpenAI API', 'LocalStorage', 'Vercel'],
-        liveUrl: 'https://berninutri-portfolio.vercel.app',
-        repoUrl: 'https://github.com/ft4k696bk6-prog/berninutri-portfolio',
       },
       {
         id: 'static-portfolio',
@@ -387,6 +418,7 @@ export const portfolioContent = {
       actions: {
         live: 'Demo',
         repo: 'Repo',
+        caseStudy: 'Studium przypadku',
         portfolio: 'Portfolio',
         calendar: 'Kalendarz',
         calendarValue: 'Wybierz termin',
@@ -452,8 +484,8 @@ export function buildAiFallbackAnswer(messages: AiMessagePayload[], language: Ap
 
   if (hasAny(normalized, ['project', 'projects', 'portfolio', 'projek', 'realizac'])) {
     return isPolish
-      ? 'Najlepsza ścieżka: B-CRM DEMO jako dowód techniczny, główne portfolio jako case studies i SEO/Next.js, Berni Rush jako gameplay/web game, a kalkulator leasingu i BerniNutri jako prototypy narzędzi biznesowych.'
-      : 'Best review path: B-CRM DEMO as the technical proof, the main portfolio for case studies and Next.js/SEO, Berni Rush for gameplay/web-game work, and the leasing calculator plus BerniNutri as business-tool prototypes.'
+      ? 'Najlepsza ścieżka: B-CRM DEMO jako dowód techniczny, główne portfolio jako case studies i SEO/Next.js, Berni Rush jako gameplay/web game, a Motomizer, StarCars i BeatMarket jako przykłady projektów produktowych.'
+      : 'Best review path: B-CRM DEMO as the technical proof, the main portfolio for case studies and Next.js/SEO, Berni Rush for gameplay/web-game work, and Motomizer, StarCars and BeatMarket as examples of product work.'
   }
 
   if (hasAny(normalized, ['stack', 'tech', 'technolog', 'typescript', 'react', 'next', 'supabase'])) {
