@@ -1,8 +1,15 @@
 # Kacper-Bernecki
 
-Secondary experimental interactive portfolio built as a cinematic MacBook-style web experience. The main professional portfolio is https://kacper-portfolio.vercel.app.
+Secondary experimental interactive portfolio built as a cinematic MacBook-style web experience. The main professional portfolio and current service offer is https://bernecki.dev.
 
-PL: To dodatkowy, eksperymentalny projekt interaktywny. Nie zastępuje głównego portfolio technicznego.
+PL: To dodatkowy, eksperymentalny projekt interaktywny. Aktualne portfolio, realizacje i oferta usług: https://bernecki.dev.
+
+## Selected real-world work
+
+- [Portfolio and services — bernecki.dev](https://bernecki.dev) — websites, CRM applications and marketing services.
+- [StarCars Import](https://www.star-cars.us/) — import services website with customer quotation flow and guides.
+- [Re-Energy System](https://re-energysystem.pl/) — photovoltaic and storage installation business, supported by a [lead-generation case study](https://bernecki.dev/case-studies/re-energy-meta-ads).
+- [B-CRM case study](https://bernecki.dev/case-studies/b-crm) — role-based CRM for the sales workflow.
 
 ## Live demo
 
